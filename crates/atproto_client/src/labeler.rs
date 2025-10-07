@@ -107,6 +107,18 @@ impl LabelerClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
+
+            // Check for authentication errors
+            if status == reqwest::StatusCode::UNAUTHORIZED
+                || status == reqwest::StatusCode::FORBIDDEN
+            {
+                return Err(Error::AuthenticationRequired(format!(
+                    "This content requires authentication to view labels. Please sign in with your Bluesky account. (HTTP {}{})",
+                    status,
+                    if !error_text.is_empty() { format!(": {}", error_text) } else { String::new() }
+                )));
+            }
+
             return Err(Error::LabelerUnavailable(format!(
                 "HTTP {}: {}",
                 status, error_text

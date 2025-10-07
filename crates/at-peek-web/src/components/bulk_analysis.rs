@@ -142,9 +142,10 @@ pub fn BulkAnalysis() -> impl IntoView {
             {move || {
                 let posts = labeled_posts.get();
                 if !posts.is_empty() {
+                    let has_account_labels = stats.get().map(|s| !s.account_labels.is_empty()).unwrap_or(false);
                     Some(view! {
                         <div class="mt-6">
-                            <LabeledPostsList posts=posts selected_post=selected_post />
+                            <LabeledPostsList posts=posts selected_post=selected_post has_account_labels=has_account_labels />
                         </div>
                     })
                 } else {
@@ -296,12 +297,52 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
 fn LabeledPostsList(
     posts: Vec<PostWithLabels>,
     selected_post: RwSignal<Option<PostWithLabels>>,
+    has_account_labels: bool,
 ) -> impl IntoView {
+    // Count how many posts actually have labels
+    let posts_with_actual_labels = posts.iter().filter(|p| !p.labels.is_empty()).count();
+
+    // Determine the appropriate header
+    let (header_text, subtitle) = if has_account_labels && posts_with_actual_labels == 0 {
+        (
+            format!("📝 Recent Posts from Moderated Account ({})", posts.len()),
+            Some(
+                "Showing recent posts for transparency. Individual posts may not have labels."
+                    .to_string(),
+            ),
+        )
+    } else if has_account_labels {
+        (
+            format!("📝 Posts from Moderated Account ({})", posts.len()),
+            Some(format!(
+                "{} post{} {} individual labels",
+                posts_with_actual_labels,
+                if posts_with_actual_labels == 1 {
+                    ""
+                } else {
+                    "s"
+                },
+                if posts_with_actual_labels == 1 {
+                    "has"
+                } else {
+                    "have"
+                }
+            )),
+        )
+    } else {
+        (format!("📝 Posts with Labels ({})", posts.len()), None)
+    };
+
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-bold mb-4">
-                "📝 Posts with Labels (" {posts.len()} ")"
+            <h3 class="text-lg font-bold mb-2">
+                {header_text}
             </h3>
+            {subtitle.map(|text| view! {
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {text}
+                </p>
+            })}
             <div class="space-y-2 max-h-96 overflow-y-auto">
                 <For
                     each=move || posts.clone()
@@ -352,9 +393,19 @@ fn LabeledPostsList(
                                         </div>
                                     </div>
                                     <div class="ml-4 flex-shrink-0">
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                            {post.labels.len()} " labels"
-                                        </span>
+                                        {if post.labels.is_empty() {
+                                            view! {
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                                    "No labels"
+                                                </span>
+                                            }.into_view()
+                                        } else {
+                                            view! {
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                    {post.labels.len()} " label" {if post.labels.len() == 1 { "" } else { "s" }}
+                                                </span>
+                                            }.into_view()
+                                        }}
                                     </div>
                                 </div>
                             </div>

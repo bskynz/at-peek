@@ -20,6 +20,9 @@ pub enum Error {
     #[error("Labeler service unavailable: {0}")]
     LabelerUnavailable(String),
 
+    #[error("Authentication required: {0}")]
+    AuthenticationRequired(String),
+
     #[error("Invalid label schema: {0}")]
     LabelValidation(String),
 

@@ -55,6 +55,10 @@ pub async fn fetch_labels(
     {
         Ok(collection) => collection.labels,
         Err(e) => {
+            // Propagate authentication errors to the user
+            if matches!(e, atproto_client::Error::AuthenticationRequired(_)) {
+                return Err(e.to_string());
+            }
             log::warn!("Failed to query Bluesky labeler: {}", e);
             Vec::new()
         }
@@ -438,6 +442,10 @@ where
             all_labels.extend(collection.labels);
         }
         Err(e) => {
+            // Propagate authentication errors to the user
+            if matches!(e, atproto_client::Error::AuthenticationRequired(_)) {
+                return Err(e.to_string());
+            }
             log::error!("Failed to query account-level labels: {}", e);
         }
     }
@@ -464,6 +472,10 @@ where
                 all_labels.extend(collection.labels);
             }
             Err(e) => {
+                // Propagate authentication errors to the user
+                if matches!(e, atproto_client::Error::AuthenticationRequired(_)) {
+                    return Err(e.to_string());
+                }
                 log::error!("Failed to query mod.bsky.app batch {}: {}", i + 1, e);
             }
         }
@@ -476,7 +488,7 @@ where
 
     progress_callback("Analyzing results...".to_string());
 
-    // Calculate statistics
+    // Calculate statistics (only for post-level labels, not account labels)
     let mut posts_with_labels_set: std::collections::HashSet<String> =
         std::collections::HashSet::new();
     let mut labels_by_category: HashMap<atproto_client::LabelCategory, usize> = HashMap::new();
@@ -484,11 +496,15 @@ where
 
     for label in &all_labels {
         if !label.neg {
-            posts_with_labels_set.insert(label.uri.clone());
+            // Only count post URIs (not account-level DIDs)
+            // Post URIs start with "at://" while DIDs start with "did:"
+            if label.uri.starts_with("at://") {
+                posts_with_labels_set.insert(label.uri.clone());
 
-            let category = label.category();
-            *labels_by_category.entry(category).or_insert(0) += 1;
-            *label_value_counts.entry(label.val.clone()).or_insert(0) += 1;
+                let category = label.category();
+                *labels_by_category.entry(category).or_insert(0) += 1;
+                *label_value_counts.entry(label.val.clone()).or_insert(0) += 1;
+            }
         }
     }
 
