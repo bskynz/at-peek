@@ -404,21 +404,6 @@ where
         log::info!("  - {}", uri);
     }
 
-    // Check if the known !takedown post is in the list
-    let takedown_uri = format!("at://{}/app.bsky.feed.post/3lylub2qvq22i", did.as_str());
-    if uris.contains(&takedown_uri) {
-        log::info!("✓ Found the known !takedown post: {}", takedown_uri);
-    } else {
-        log::warn!(
-            "✗ Known !takedown post NOT in fetched posts: {}",
-            takedown_uri
-        );
-        log::warn!(
-            "This might mean the post was deleted, or not in the last {} posts",
-            posts.len()
-        );
-    }
-
     // Query labels from Bluesky's moderation service (including !takedown with auth)
     let batch_size = 25;
     let mut all_labels = Vec::new();
