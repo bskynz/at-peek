@@ -5,28 +5,28 @@ use leptos::*;
 #[allow(unused_imports)]
 use leptos_meta::*;
 
+use super::{BulkAnalysis, Header, InputPanel, LabelViewer};
 use crate::state::AppState;
-use super::{Header, InputPanel, LabelViewer, BulkAnalysis};
 
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-    
+
     let state = AppState::new();
     let mode = create_rw_signal("single"); // "single" or "bulk"
-    
+
     provide_context(state);
-    
+
     view! {
         <Stylesheet id="leptos" href="/pkg/at-peek-web.css"/>
         <Link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"/>
-        
+
         <Title text="at-peek - ATproto Label Inspector"/>
         <Meta name="description" content="Inspect content moderation labels on ATproto users and posts"/>
-        
+
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
             <Header />
-            
+
             <main class="container mx-auto px-4 py-8 max-w-4xl">
                 <div class="mb-6 flex gap-2">
                     <button
@@ -56,7 +56,7 @@ pub fn App() -> impl IntoView {
                         "📊 Bulk Analysis"
                     </button>
                 </div>
-                
+
                 <Show
                     when=move || mode.get() == "single"
                     fallback=|| view! { <BulkAnalysis /> }
@@ -65,7 +65,7 @@ pub fn App() -> impl IntoView {
                     <LabelViewer />
                 </Show>
             </main>
-            
+
             <footer class="mt-16 py-8 border-t border-gray-200 dark:border-gray-700">
                 <div class="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
                     <p>
@@ -86,5 +86,3 @@ pub fn App() -> impl IntoView {
         </div>
     }
 }
-
-

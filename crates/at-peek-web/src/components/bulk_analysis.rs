@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use leptos::*;
-use wasm_bindgen_futures::spawn_local;
 use std::collections::HashMap;
+use wasm_bindgen_futures::spawn_local;
 
 use crate::state::AppState;
 use atproto_client::LabelCategory;
@@ -46,28 +46,32 @@ pub fn BulkAnalysis() -> impl IntoView {
     let selected_post = create_rw_signal::<Option<PostWithLabels>>(None);
     let is_analyzing = create_rw_signal(false);
     let progress = create_rw_signal::<Option<String>>(None);
-    
+
     let on_analyze = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
-        
+
         let input = state.subject_input.get();
-        
+
         if input.trim().is_empty() {
-            state.error.set(Some("Please enter a Bluesky handle".to_string()));
+            state
+                .error
+                .set(Some("Please enter a Bluesky handle".to_string()));
             return;
         }
-        
+
         state.error.set(None);
         stats.set(None);
         labeled_posts.set(Vec::new());
         is_analyzing.set(true);
         progress.set(Some("Starting analysis...".to_string()));
-        
+
         spawn_local(async move {
             let auth_token = state.auth_token.get();
             match crate::utils::analyze_user_posts(&input, auth_token, |msg| {
                 progress.set(Some(msg));
-            }).await {
+            })
+            .await
+            {
                 Ok((analysis_stats, posts)) => {
                     stats.set(Some(analysis_stats));
                     labeled_posts.set(posts);
@@ -84,7 +88,7 @@ pub fn BulkAnalysis() -> impl IntoView {
             is_analyzing.set(false);
         });
     };
-    
+
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-xl font-bold mb-4">
@@ -93,7 +97,7 @@ pub fn BulkAnalysis() -> impl IntoView {
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 "Analyze the last 1000 posts from a user to see label statistics"
             </p>
-            
+
             <form on:submit=on_analyze>
                 <div class="mb-4">
                     <input
@@ -106,7 +110,7 @@ pub fn BulkAnalysis() -> impl IntoView {
                         }
                     />
                 </div>
-                
+
                 <button
                     type="submit"
                     disabled=move || is_analyzing.get()
@@ -119,7 +123,7 @@ pub fn BulkAnalysis() -> impl IntoView {
                     }}
                 </button>
             </form>
-            
+
             {move || progress.get().map(|msg| view! {
                 <div class="mt-4 p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
                     <p class="text-sm text-blue-800 dark:text-blue-200">
@@ -127,13 +131,13 @@ pub fn BulkAnalysis() -> impl IntoView {
                     </p>
                 </div>
             })}
-            
+
             {move || stats.get().map(|s| view! {
                 <div class="mt-6">
                     <StatsDisplay stats=s />
                 </div>
             })}
-            
+
             {move || {
                 let posts = labeled_posts.get();
                 if !posts.is_empty() {
@@ -146,7 +150,7 @@ pub fn BulkAnalysis() -> impl IntoView {
                     None
                 }
             }}
-            
+
             {move || selected_post.get().map(|post| view! {
                 <PostDetailModal post=post on_close=move || selected_post.set(None) />
             })}
@@ -161,11 +165,11 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
     } else {
         0.0
     };
-    
+
     view! {
         <div class="space-y-4">
             <h3 class="text-lg font-bold">"Analysis Results"</h3>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -175,7 +179,7 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                         "Total Posts Analyzed"
                     </div>
                 </div>
-                
+
                 <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">
                         {stats.posts_with_labels}
@@ -184,7 +188,7 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                         "Posts with Labels"
                     </div>
                 </div>
-                
+
                 <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div class="text-2xl font-bold text-red-600 dark:text-red-400">
                         {format!("{:.1}%", percentage_with_labels)}
@@ -194,7 +198,7 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                     </div>
                 </div>
             </div>
-            
+
             {if !stats.labels_by_category.is_empty() {
                 view! {
                     <div>
@@ -205,7 +209,7 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                                 let pct = *count as f64 / total * 100.0;
                                 let count_val = *count;
                                 let cat = category.clone();
-                                
+
                                 view! {
                                     <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                         <div class="flex items-center gap-2">
@@ -233,7 +237,7 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                     </div>
                 }.into_view()
             }}
-            
+
             {if !stats.top_label_values.is_empty() {
                 view! {
                     <div>
@@ -242,7 +246,7 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                             {stats.top_label_values.iter().take(6).map(|(label, count)| {
                                 let label_val = label.clone();
                                 let count_val = *count;
-                                
+
                                 view! {
                                     <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                         <div class="font-mono text-sm font-bold">{label_val}</div>
@@ -263,7 +267,10 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
 }
 
 #[component]
-fn LabeledPostsList(posts: Vec<PostWithLabels>, selected_post: RwSignal<Option<PostWithLabels>>) -> impl IntoView {
+fn LabeledPostsList(
+    posts: Vec<PostWithLabels>,
+    selected_post: RwSignal<Option<PostWithLabels>>,
+) -> impl IntoView {
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <h3 class="text-lg font-bold mb-4">
@@ -340,7 +347,7 @@ where
 {
     let show_likers = create_rw_signal(false);
     let show_reposters = create_rw_signal(false);
-    
+
     view! {
         <div
             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
@@ -362,7 +369,7 @@ where
                             "✕"
                         </button>
                     </div>
-                    
+
                     <div class="space-y-4">
                         <div>
                             <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -372,7 +379,7 @@ where
                                 {if post.text.is_empty() { "[No text content]".to_string() } else { post.text.clone() }}
                             </p>
                         </div>
-                        
+
                         <div>
                             <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 "Labels (" {post.labels.len()} ")"
@@ -409,7 +416,7 @@ where
                                                         </div>
                                                     }.into_view()
                                                 } else {
-                                                    view! { <></> }.into_view()
+                                                    ().into_view()
                                                 }}
                                             </div>
                                         </div>
@@ -417,7 +424,7 @@ where
                                 }).collect::<Vec<_>>()}
                             </div>
                         </div>
-                        
+
                         <div>
                             <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 "URI"
@@ -430,7 +437,7 @@ where
                                 {&post.uri}
                             </a>
                         </div>
-                        
+
                         <div>
                             <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 "Posted"
@@ -439,7 +446,7 @@ where
                                 {crate::utils::format_timestamp(&post.created_at)}
                             </p>
                         </div>
-                        
+
                         // Display images
                         {if !post.image_urls.is_empty() {
                             view! {
@@ -468,9 +475,9 @@ where
                                 </div>
                             }.into_view()
                         } else {
-                            view! { <></> }.into_view()
+                            ().into_view()
                         }}
-                        
+
                         // Display video
                         {if let Some(video_url) = &post.video_url {
                             let video_url_clone = video_url.clone();
@@ -489,9 +496,9 @@ where
                                 </div>
                             }.into_view()
                         } else {
-                            view! { <></> }.into_view()
+                            ().into_view()
                         }}
-                        
+
                         // Display likes (expandable) - Always show, even with zero
                         {
                             let likers_clone = post.likers.clone();
@@ -516,13 +523,13 @@ where
                                                 <span class="text-xs">
                                                     {move || if show_likers.get() { "▼" } else { "▶" }}
                                                 </span>
-                                            }.into_view()
-                                        } else {
-                                            view! { <></> }.into_view()
-                                        }}
-                                    </button>
-                                    
-                                    {move || if show_likers.get() && like_count > 0 {
+                                    }.into_view()
+                                } else {
+                                    ().into_view()
+                                }}
+                            </button>
+
+                            {move || if show_likers.get() && like_count > 0 {
                                         view! {
                                             <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
                                                 {likers_clone.iter().map(|liker| {
@@ -544,12 +551,12 @@ where
                                             </div>
                                         }.into_view()
                                     } else {
-                                        view! { <></> }.into_view()
+                                        ().into_view()
                                     }}
                                 </div>
                             }
                         }
-                        
+
                         // Display reposts (expandable) - Always show, even with zero
                         {
                             let reposters_clone = post.reposters.clone();
@@ -574,13 +581,13 @@ where
                                                 <span class="text-xs">
                                                     {move || if show_reposters.get() { "▼" } else { "▶" }}
                                                 </span>
-                                            }.into_view()
-                                        } else {
-                                            view! { <></> }.into_view()
-                                        }}
-                                    </button>
-                                    
-                                    {move || if show_reposters.get() && repost_count > 0 {
+                                    }.into_view()
+                                } else {
+                                    ().into_view()
+                                }}
+                            </button>
+
+                            {move || if show_reposters.get() && repost_count > 0 {
                                         view! {
                                             <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
                                                 {reposters_clone.iter().map(|reposter| {
@@ -602,7 +609,7 @@ where
                                             </div>
                                         }.into_view()
                                     } else {
-                                        view! { <></> }.into_view()
+                                        ().into_view()
                                     }}
                                 </div>
                             }
@@ -613,4 +620,3 @@ where
         </div>
     }
 }
-

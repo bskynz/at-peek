@@ -3,22 +3,20 @@
 
 #![forbid(unsafe_code)]
 
-mod types;
+mod auth;
 mod error;
-mod resolver;
 mod labeler;
 mod posts;
-mod auth;
+mod resolver;
+mod types;
 
 // Public API exports (used by web UI)
-pub use types::{Did, Handle, Label, LabelCollection, LabelCategory, AtRecord};
+pub use auth::create_session;
 pub use labeler::LabelerClient;
 pub use posts::PostClient;
-pub use resolver::{resolve_handle, resolve_did};
-pub use auth::create_session;
+pub use resolver::{resolve_did, resolve_handle};
+pub use types::{AtRecord, Did, Handle, Label, LabelCategory, LabelCollection};
 
 // Internal types (not exported, only used internally)
-pub(crate) use types::{LabelsResponse, ListRecordsResponse};
 pub(crate) use error::{Error, Result};
-
-
+pub(crate) use types::{LabelsResponse, ListRecordsResponse};

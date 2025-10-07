@@ -16,13 +16,11 @@ use components::App;
 pub fn main() {
     // Set up panic hook for better error messages
     console_error_panic_hook::set_once();
-    
+
     // Initialize logging
     console_log::init_with_level(log::Level::Debug).expect("Failed to initialize logger");
-    
+
     log::info!("at-peek web UI starting...");
-    
+
     leptos::mount_to_body(App);
 }
-
-

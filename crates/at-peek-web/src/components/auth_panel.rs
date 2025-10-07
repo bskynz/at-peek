@@ -12,21 +12,23 @@ pub fn AuthPanel() -> impl IntoView {
     let handle = create_rw_signal(String::new());
     let password = create_rw_signal(String::new());
     let is_authenticating = create_rw_signal(false);
-    
+
     let on_login = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
-        
+
         let handle_val = handle.get();
         let password_val = password.get();
-        
+
         if handle_val.trim().is_empty() || password_val.trim().is_empty() {
-            state.error.set(Some("Please enter both handle and app password".to_string()));
+            state.error.set(Some(
+                "Please enter both handle and app password".to_string(),
+            ));
             return;
         }
-        
+
         state.error.set(None);
         is_authenticating.set(true);
-        
+
         spawn_local(async move {
             match crate::utils::authenticate(&handle_val, &password_val).await {
                 Ok(token) => {
@@ -46,7 +48,7 @@ pub fn AuthPanel() -> impl IntoView {
             is_authenticating.set(false);
         });
     };
-    
+
     let on_logout = move |_| {
         state.auth_token.set(None);
         state.is_authenticated.set(false);
@@ -54,7 +56,7 @@ pub fn AuthPanel() -> impl IntoView {
         password.set(String::new());
         log::info!("Logged out");
     };
-    
+
     view! {
         <div class="flex items-center gap-2">
             {move || if state.is_authenticated.get() {
@@ -82,7 +84,7 @@ pub fn AuthPanel() -> impl IntoView {
                 }.into_view()
             }}
         </div>
-        
+
         {move || show_auth.get().then(|| view! {
             <div
                 class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
@@ -103,7 +105,7 @@ pub fn AuthPanel() -> impl IntoView {
                             "✕"
                         </button>
                     </div>
-                    
+
                     <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
                         <p class="text-sm text-blue-800 dark:text-blue-200">
                             "⚠️ Authentication is required to view admin labels like "
@@ -118,7 +120,7 @@ pub fn AuthPanel() -> impl IntoView {
                             </a>
                         </p>
                     </div>
-                    
+
                     <form on:submit=on_login class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -134,7 +136,7 @@ pub fn AuthPanel() -> impl IntoView {
                                 }
                             />
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 "App Password"
@@ -149,11 +151,11 @@ pub fn AuthPanel() -> impl IntoView {
                                 }
                             />
                         </div>
-                        
+
                         <div class="text-xs text-gray-600 dark:text-gray-400">
                             "Your credentials are only used to get an access token and are not stored. The token is kept in your browser's memory for this session only."
                         </div>
-                        
+
                         <button
                             type="submit"
                             disabled=move || is_authenticating.get()
@@ -171,4 +173,3 @@ pub fn AuthPanel() -> impl IntoView {
         })}
     }
 }
-

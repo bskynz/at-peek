@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use leptos::*;
 use super::AuthPanel;
+use leptos::*;
 
 #[component]
 pub fn Header() -> impl IntoView {
@@ -20,10 +20,10 @@ pub fn Header() -> impl IntoView {
                             </p>
                         </div>
                     </div>
-                    
+
                     <div class="flex items-center gap-4">
                         <AuthPanel />
-                        <a 
+                        <a
                             href="https://docs.bsky.app/docs/advanced-guides/moderation"
                             target="_blank"
                             class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -36,5 +36,3 @@ pub fn Header() -> impl IntoView {
         </header>
     }
 }
-
-

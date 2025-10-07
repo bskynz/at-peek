@@ -16,5 +16,3 @@ pub fn EmptyState() -> impl IntoView {
         </div>
     }
 }
-
-

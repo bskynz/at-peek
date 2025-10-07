@@ -11,11 +11,11 @@ impl Did {
     pub fn new(did: String) -> Self {
         Self(did)
     }
-    
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
-    
+
     /// Validate DID format
     pub fn validate(&self) -> bool {
         self.0.starts_with("did:") && self.0.len() > 4
@@ -36,11 +36,11 @@ impl Handle {
     pub fn new(handle: String) -> Self {
         Self(handle)
     }
-    
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
-    
+
     /// Validate handle format
     pub fn validate(&self) -> bool {
         self.0.contains('.') && !self.0.starts_with('.') && !self.0.ends_with('.')
@@ -58,24 +58,24 @@ impl std::fmt::Display for Handle {
 pub struct Label {
     /// The label value (e.g., "porn", "sexual", "graphic-media", "spam")
     pub val: String,
-    
+
     /// Subject of the label (DID or AT-URI)
     pub uri: String,
-    
+
     /// Optional CID for content-addressed labels
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cid: Option<String>,
-    
+
     /// DID of the labeler that created this label
     pub src: String,
-    
+
     /// Timestamp when label was created (ISO 8601)
     pub cts: String,
-    
+
     /// Optional expiration timestamp
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exp: Option<String>,
-    
+
     /// Negation flag (if true, removes a previously applied label)
     #[serde(default)]
     pub neg: bool,
@@ -86,7 +86,7 @@ impl Label {
     pub fn category(&self) -> LabelCategory {
         LabelCategory::from_value(&self.val)
     }
-    
+
     /// Get a human-readable description of this label
     pub fn description(&self) -> &'static str {
         match self.val.as_str() {
@@ -94,17 +94,17 @@ impl Label {
             "porn" => "Pornographic content (18+, requires user opt-in)",
             "sexual" => "Sexually suggestive content (18+, requires user opt-in)",
             "nudity" => "Nudity (artistic or otherwise, can be disabled)",
-            
+
             // Violence Labels
             "graphic-media" => "Graphic violence or disturbing imagery (18+, requires user opt-in)",
             "gore" => "Extreme violence or gore",
-            
+
             // Spam & Quality Labels
             "spam" => "Spam or low-quality content",
-            
+
             // Hate & Harassment Labels
             "hate" => "Hateful or discriminatory content",
-            
+
             // Moderation Action Labels (admin/moderator applied)
             "!hide" => "Hidden from feeds (cannot be clicked through)",
             "!warn" => "Warning required before viewing (can be clicked through)",
@@ -113,7 +113,7 @@ impl Label {
             "!blur" => "Blurred in feeds",
             "!no-promote" => "Excluded from algorithmic promotion",
             "!filter" => "Filtered from search results",
-            
+
             // Catch-all for custom labels
             _ if self.val.starts_with('!') => "Custom moderation action",
             _ => "Custom content label",
@@ -125,7 +125,7 @@ impl Label {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LabelsResponse {
     pub labels: Vec<Label>,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
 }
@@ -142,7 +142,7 @@ pub struct AtRecord {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListRecordsResponse {
     pub records: Vec<AtRecord>,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
 }
@@ -177,7 +177,7 @@ impl LabelCategory {
             _ => Self::Other,
         }
     }
-    
+
     pub fn name(&self) -> &'static str {
         match self {
             Self::AdultContent => "Adult Content",
@@ -188,7 +188,7 @@ impl LabelCategory {
             Self::Other => "Other Labels",
         }
     }
-    
+
     pub fn icon(&self) -> &'static str {
         match self {
             Self::AdultContent => "🔞",
@@ -200,5 +200,3 @@ impl LabelCategory {
         }
     }
 }
-
-

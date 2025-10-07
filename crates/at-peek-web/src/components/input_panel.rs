@@ -9,20 +9,22 @@ use crate::utils;
 #[component]
 pub fn InputPanel() -> impl IntoView {
     let state = expect_context::<AppState>();
-    
+
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
-        
+
         let input = state.subject_input.get();
-        
+
         if input.trim().is_empty() {
-            state.error.set(Some("Please enter a handle, DID, or AT-URI".to_string()));
+            state
+                .error
+                .set(Some("Please enter a handle, DID, or AT-URI".to_string()));
             return;
         }
-        
+
         state.error.set(None);
         state.is_loading.set(true);
-        
+
         spawn_local(async move {
             let auth_token = state.auth_token.get();
             match utils::fetch_labels(&input, auth_token).await {
@@ -38,18 +40,18 @@ pub fn InputPanel() -> impl IntoView {
             state.is_loading.set(false);
         });
     };
-    
+
     view! {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
             <form on:submit=on_submit>
                 <div class="mb-4">
-                    <label 
+                    <label
                         for="subject-input"
                         class="block text-sm font-medium mb-2"
                     >
                         "Enter Bluesky handle, DID, or post AT-URI"
                     </label>
-                    
+
                     <input
                         id="subject-input"
                         type="text"
@@ -60,12 +62,12 @@ pub fn InputPanel() -> impl IntoView {
                             state.subject_input.set(event_target_value(&ev));
                         }
                     />
-                    
+
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                         "Examples: alice.bsky.social • did:plc:xyz123 • at://did:plc:xyz/app.bsky.feed.post/abc"
                     </p>
                 </div>
-                
+
                 <button
                     type="submit"
                     disabled=move || state.is_loading.get()
@@ -78,7 +80,7 @@ pub fn InputPanel() -> impl IntoView {
                     }}
                 </button>
             </form>
-            
+
             {move || state.error.get().map(|err| view! {
                 <div class="mt-4 p-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg">
                     <p class="text-red-800 dark:text-red-200 text-sm">
@@ -89,5 +91,3 @@ pub fn InputPanel() -> impl IntoView {
         </div>
     }
 }
-
-
