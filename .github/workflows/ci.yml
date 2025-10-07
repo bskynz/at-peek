@@ -65,19 +65,147 @@ jobs:
       - name: Install trunk
         run: cargo install trunk --locked
       
+      - name: Install wasm-opt
+        run: |
+          npm install -g wasm-opt
+      
       - name: Build web UI
         run: |
           cd crates/at-peek-web
           trunk build --release
       
+      - name: Optimize WASM with wasm-opt
+        run: |
+          cd crates/at-peek-web/dist
+          echo "Pre-optimization size:"
+          ls -lh *.wasm
+          
+          WASM_FILE=$(ls *.wasm)
+          wasm-opt -Oz --strip-debug --strip-producers -o "${WASM_FILE}.opt" "${WASM_FILE}"
+          mv "${WASM_FILE}.opt" "${WASM_FILE}"
+          
+          echo "Post-optimization size:"
+          ls -lh *.wasm
+      
       - name: Check bundle size
         run: |
           cd crates/at-peek-web/dist
-          ls -lh *.wasm
           SIZE=$(stat -c%s *.wasm)
-          echo "WASM bundle size: $SIZE bytes"
+          SIZE_KB=$((SIZE / 1024))
+          SIZE_MB=$((SIZE_KB / 1024))
+          echo "WASM bundle size: ${SIZE} bytes (${SIZE_KB} KB / ${SIZE_MB} MB)"
+          echo ""
           if [ $SIZE -gt 524288 ]; then
-            echo "Warning: WASM bundle exceeds 500KB target"
+            echo "⚠️  Warning: WASM bundle exceeds 500KB target (current: ${SIZE_KB} KB)"
+          else
+            echo "✅ WASM bundle is within 500KB target (current: ${SIZE_KB} KB)"
           fi
+      
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-dist
+          path: crates/at-peek-web/dist/
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Cloudflare Pages
+    runs-on: ubuntu-latest
+    needs: [test, build-wasm]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      
+      - name: Install trunk
+        run: cargo install trunk --locked
+      
+      - name: Install wasm-opt
+        run: |
+          npm install -g wasm-opt
+      
+      - name: Build web UI (release)
+        run: |
+          cd crates/at-peek-web
+          trunk build --release
+      
+      - name: Optimize WASM with wasm-opt
+        run: |
+          cd crates/at-peek-web/dist
+          echo "Original WASM size:"
+          ls -lh *.wasm
+          
+          # Find the wasm file
+          WASM_FILE=$(ls *.wasm)
+          
+          # Optimize with wasm-opt (aggressive optimization)
+          wasm-opt -Oz --strip-debug --strip-producers -o "${WASM_FILE}.opt" "${WASM_FILE}"
+          
+          # Replace original with optimized version
+          mv "${WASM_FILE}.opt" "${WASM_FILE}"
+          
+          echo ""
+          echo "Optimized WASM size:"
+          ls -lh *.wasm
+      
+      - name: Display build output
+        run: |
+          echo "Final build artifacts:"
+          ls -lh crates/at-peek-web/dist/
+          echo ""
+          echo "Total deployment size:"
+          du -sh crates/at-peek-web/dist/
+      
+      - name: Deploy to Cloudflare Pages
+        id: cloudflare-deploy
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: at-peek
+          directory: crates/at-peek-web/dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+          wranglerVersion: '3'
+      
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "## 🚀 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Build Statistics" >> $GITHUB_STEP_SUMMARY
+          
+          cd crates/at-peek-web/dist
+          WASM_SIZE=$(stat -c%s *.wasm 2>/dev/null || stat -f%z *.wasm)
+          WASM_SIZE_KB=$((WASM_SIZE / 1024))
+          JS_SIZE=$(stat -c%s *.js 2>/dev/null || stat -f%z *.js)
+          JS_SIZE_KB=$((JS_SIZE / 1024))
+          
+          echo "- **WASM Bundle**: ${WASM_SIZE_KB} KB" >> $GITHUB_STEP_SUMMARY
+          echo "- **JavaScript**: ${JS_SIZE_KB} KB" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 Deployment URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Production**: https://peek.bsky.nz" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cloudflare Pages**: https://at-peek.pages.dev" >> $GITHUB_STEP_SUMMARY
+          echo "- **This Deployment**: ${{ steps.cloudflare-deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ℹ️ Custom Domain Setup" >> $GITHUB_STEP_SUMMARY
+          echo "If this is your first deployment, configure the custom domain:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Navigate to **Workers & Pages** → **at-peek** → **Custom domains**" >> $GITHUB_STEP_SUMMARY
+          echo "3. Add domain: \`peek.bsky.nz\`" >> $GITHUB_STEP_SUMMARY
+          
+          echo ""
+          echo "✅ Deployment complete!"
+          echo "🌐 Production URL: https://peek.bsky.nz"
+          echo "🔗 Cloudflare URL: https://at-peek.pages.dev"
+          echo "📦 WASM size: ${WASM_SIZE_KB} KB"
 
 

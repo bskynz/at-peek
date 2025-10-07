@@ -1,0 +1,24 @@
+# Cloudflare Pages configuration for at-peek
+
+name = "at-peek"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
+
+# This is a Pages project (not Workers)
+# For Pages, custom domains are managed via dashboard or CLI commands
+
+# Build configuration
+[build]
+command = "trunk build --release"
+cwd = "."
+
+# Environment configuration
+[env.production]
+# Production environment (main branch)
+# Custom domains can be added via:
+# wrangler pages domain add at-peek your-domain.com
+
+[env.preview]
+# Preview environment (other branches)
+# Automatic preview URLs like: https://[branch]--at-peek.pages.dev
+
