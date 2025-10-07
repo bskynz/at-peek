@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use leptos::*;
+use leptos::prelude::*;
 
 #[allow(unused_imports)]
 use leptos_meta::*;
@@ -13,7 +13,7 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     let state = AppState::new();
-    let mode = create_rw_signal("single"); // "single" or "bulk"
+    let mode = RwSignal::new("single"); // "single" or "bulk"
 
     provide_context(state);
 

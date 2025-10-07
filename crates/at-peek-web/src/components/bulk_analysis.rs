@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use leptos::*;
+use leptos::prelude::*;
 use std::collections::HashMap;
 use wasm_bindgen_futures::spawn_local;
 
@@ -42,12 +42,12 @@ pub struct UserInfo {
 #[component]
 pub fn BulkAnalysis() -> impl IntoView {
     let state = expect_context::<AppState>();
-    let stats = create_rw_signal::<Option<BulkAnalysisStats>>(None);
-    let labeled_posts = create_rw_signal::<Vec<PostWithLabels>>(Vec::new());
-    let selected_post = create_rw_signal::<Option<PostWithLabels>>(None);
-    let is_analyzing = create_rw_signal(false);
-    let progress = create_rw_signal::<Option<String>>(None);
-    let progress_percent = create_rw_signal(0);
+    let stats = RwSignal::new(None::<BulkAnalysisStats>);
+    let labeled_posts = RwSignal::new(Vec::<PostWithLabels>::new());
+    let selected_post = RwSignal::new(None::<PostWithLabels>);
+    let is_analyzing = RwSignal::new(false);
+    let progress = RwSignal::new(None::<String>);
+    let progress_percent = RwSignal::new(0);
 
     let on_analyze = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -230,11 +230,11 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                             </p>
                             <div class="flex flex-wrap gap-2">
                                 {stats.account_labels.iter().map(|label| {
-                                    view! {
-                                        <span class="px-3 py-1 bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-100 rounded-full text-sm font-mono">
-                                            {&label.val}
-                                        </span>
-                                    }
+                                view! {
+                                    <span class="px-3 py-1 bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-100 rounded-full text-sm font-mono">
+                                        {label.val.clone()}
+                                    </span>
+                                }
                                 }).collect::<Vec<_>>()}
                             </div>
                         </div>
@@ -271,68 +271,80 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
                 </div>
             </div>
 
-            {if !stats.labels_by_category.is_empty() {
-                view! {
-                    <div>
-                        <h4 class="text-md font-bold mb-3">"Labels by Category"</h4>
-                        <div class="space-y-2">
-                            {stats.labels_by_category.iter().map(|(category, count)| {
-                                let total = stats.total_posts as f64;
-                                let pct = *count as f64 / total * 100.0;
-                                let count_val = *count;
-                                let cat = category.clone();
-
-                                view! {
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xl">{cat.icon()}</span>
-                                            <span class="font-medium">{cat.name()}</span>
-                                        </div>
-                                        <div class="text-right">
-                                            <span class="font-bold">{count_val}</span>
-                                            <span class="text-sm text-gray-600 dark:text-gray-400 ml-2">
-                                                {format!("({:.1}%)", pct)}
-                                            </span>
-                                        </div>
+                {{
+                    let categories = stats.labels_by_category.clone();
+                    let total = stats.total_posts as f64;
+                    let categories_for_show = categories.clone();
+                    view! {
+                        <Show
+                            when=move || !categories_for_show.is_empty()
+                            fallback=|| view! {
+                                <div>
+                                    <div class="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                                        <p class="text-green-800 dark:text-green-200">
+                                            "✅ No moderation labels found on any posts!"
+                                        </p>
                                     </div>
-                                }
-                            }).collect::<Vec<_>>()}
-                        </div>
-                    </div>
-                }.into_view()
-            } else {
-                view! {
-                    <div class="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
-                        <p class="text-green-800 dark:text-green-200">
-                            "✅ No moderation labels found on any posts!"
-                        </p>
-                    </div>
-                }.into_view()
-            }}
+                                </div>
+                            }
+                        >
+                            <div>
+                                <h4 class="text-md font-bold mb-3">"Labels by Category"</h4>
+                                <div class="space-y-2">
+                                    {categories.iter().map(|(category, count)| {
+                                        let pct = *count as f64 / total * 100.0;
+                                        let count_val = *count;
+                                        let cat = category.clone();
 
-            {if !stats.top_label_values.is_empty() {
-                view! {
-                    <div>
-                        <h4 class="text-md font-bold mb-3">"Top Label Types"</h4>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            {stats.top_label_values.iter().take(6).map(|(label, count)| {
-                                let label_val = label.clone();
-                                let count_val = *count;
+                                        view! {
+                                            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xl">{cat.icon()}</span>
+                                                    <span class="font-medium">{cat.name()}</span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="font-bold">{count_val}</span>
+                                                    <span class="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                                                        {format!("({:.1}%)", pct)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            </div>
+                        </Show>
+                    }
+                }}
 
-                                view! {
-                                    <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                        <div class="font-mono text-sm font-bold">{label_val}</div>
-                                        <div class="text-xs text-gray-600 dark:text-gray-400">
-                                            {format!("{} occurrence{}", count_val, if count_val == 1 { "" } else { "s" })}
+            {{
+                let top_labels = stats.top_label_values.clone();
+                let top_labels_for_show = top_labels.clone();
+                view! {
+                    <Show
+                        when=move || !top_labels_for_show.is_empty()
+                        fallback=|| view! { <div></div> }
+                    >
+                        <div>
+                            <h4 class="text-md font-bold mb-3">"Top Label Types"</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {top_labels.iter().take(6).map(|(label, count)| {
+                                    let label_val = label.clone();
+                                    let count_val = *count;
+
+                                    view! {
+                                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                            <div class="font-mono text-sm font-bold">{label_val}</div>
+                                            <div class="text-xs text-gray-600 dark:text-gray-400">
+                                                {format!("{} occurrence{}", count_val, if count_val == 1 { "" } else { "s" })}
+                                            </div>
                                         </div>
-                                    </div>
-                                }
-                            }).collect::<Vec<_>>()}
+                                    }
+                                }).collect::<Vec<_>>()}
+                            </div>
                         </div>
-                    </div>
-                }.into_view()
-            } else {
-                view! {                }.into_view()
+                    </Show>
+                }
             }}
         </div>
     }
@@ -421,11 +433,11 @@ fn LabeledPostsList(
                                                     LabelCategory::ModerationAction => "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
                                                     _ => "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
                                                 };
-                                                view! {
-                                                    <span class=format!("px-2 py-1 rounded text-xs font-medium {}", color)>
-                                                        {&label.val}
-                                                    </span>
-                                                }
+                                view! {
+                                    <span class=format!("px-2 py-1 rounded text-xs font-medium {}", color)>
+                                        {label.val.clone()}
+                                    </span>
+                                }
                                             }).collect::<Vec<_>>()}
                                         </div>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -438,19 +450,9 @@ fn LabeledPostsList(
                                         </div>
                                     </div>
                                     <div class="ml-4 flex-shrink-0">
-                                        {if post.labels.is_empty() {
-                                            view! {
-                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                                                    "No labels"
-                                                </span>
-                                            }.into_view()
-                                        } else {
-                                            view! {
-                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                                    {post.labels.len()} " label" {if post.labels.len() == 1 { "" } else { "s" }}
-                                                </span>
-                                            }.into_view()
-                                        }}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                            {post.labels.len()} " label" {if post.labels.len() == 1 { "" } else { "s" }}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -467,8 +469,13 @@ fn PostDetailModal<F>(post: PostWithLabels, on_close: F) -> impl IntoView
 where
     F: Fn() + 'static + Copy,
 {
-    let show_likers = create_rw_signal(false);
-    let show_reposters = create_rw_signal(false);
+    let show_likers = RwSignal::new(false);
+    let show_reposters = RwSignal::new(false);
+
+    // Clone the post fields to avoid move issues
+    let post_created_at = post.created_at.clone();
+    let post_image_urls = post.image_urls.clone();
+    let post_labels = post.labels.clone();
 
     view! {
         <div
@@ -507,13 +514,13 @@ where
                                 "Labels (" {post.labels.len()} ")"
                             </h4>
                             <div class="space-y-2">
-                                {post.labels.iter().map(|label| {
+                                {post_labels.iter().map(|label| {
                                     let category = label.category();
                                     view! {
                                         <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                             <div class="flex items-center justify-between mb-2">
                                                 <span class="font-mono text-sm font-semibold">
-                                                    {category.icon()} " " {&label.val}
+                                                    {category.icon()} {" "} {label.val.clone()}
                                                 </span>
                                                 <span class="text-xs text-gray-500 dark:text-gray-400">
                                                     {category.name()}
@@ -522,23 +529,32 @@ where
                                             <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
                                                 <div>"Source: " <span class="font-mono">{crate::utils::shorten_did(&label.src)}</span></div>
                                                 <div>"Applied: " {crate::utils::format_timestamp(&label.cts)}</div>
-                                                {if !post.created_at.is_empty() {
-                                                    let duration = crate::utils::calculate_duration(&post.created_at, &label.cts);
-                                                    let is_moderation = label.val.starts_with('!');
-                                                    let color = if is_moderation {
-                                                        "text-pink-600 dark:text-pink-400 font-semibold"
+                                                {{
+                                                    let created_at = post_created_at.clone();
+                                                    if !created_at.is_empty() {
+                                                        let duration = crate::utils::calculate_duration(&created_at, &label.cts);
+                                                        let is_moderation = label.val.starts_with('!');
+                                                        let color = if is_moderation {
+                                                            "text-pink-600 dark:text-pink-400 font-semibold"
+                                                        } else {
+                                                            "text-gray-600 dark:text-gray-400"
+                                                        };
+                                                        view! {
+                                                            <div class=format!("flex items-center gap-1 {}", color)>
+                                                                <span>{"⏱️ "}</span>
+                                                                <span>{duration}</span>
+                                                                <span>{" after post"}</span>
+                                                            </div>
+                                                        }
                                                     } else {
-                                                        "text-gray-600 dark:text-gray-400"
-                                                    };
-                                                    view! {
-                                                        <div class=format!("flex items-center gap-1 {}", color)>
-                                                            <span>"⏱️ "</span>
-                                                            <span>{duration}</span>
-                                                            <span>" after post"</span>
-                                                        </div>
-                                                    }.into_view()
-                                                } else {
-                                                    ().into_view()
+                                                        view! {
+                                                            <div class=format!("flex items-center gap-1 {}", "text-gray-600 dark:text-gray-400")>
+                                                                <span>{"⏱️ "}</span>
+                                                                <span>{"No timestamp available".to_string()}</span>
+                                                                <span>{" after post"}</span>
+                                                            </div>
+                                                        }
+                                                    }
                                                 }}
                                             </div>
                                         </div>
@@ -556,7 +572,7 @@ where
                                 target="_blank"
                                 class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-mono break-all"
                             >
-                                {&post.uri}
+                                {post.uri.clone()}
                             </a>
                         </div>
 
@@ -570,55 +586,60 @@ where
                         </div>
 
                         // Display images
-                        {if !post.image_urls.is_empty() {
+                        {{
+                            let image_urls = post_image_urls.clone();
+                            let image_urls_for_show = image_urls.clone();
                             view! {
-                                <div>
-                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                        "Images"
-                                    </h4>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        {post.image_urls.iter().map(|url| {
-                                            let url_clone = url.clone();
-                                            view! {
-                                                <img
-                                                    src=url_clone.clone()
-                                                    class="w-full rounded border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-80"
-                                                    alt="Post image"
-                                                    on:click=move |_| {
-                                                        // Open in new tab
-                                                        if let Some(window) = web_sys::window() {
-                                                            let _ = window.open_with_url_and_target(&url_clone, "_blank");
-                                                        }
+                                <Show
+                                    when=move || !image_urls_for_show.is_empty()
+                                    fallback=|| view! { <div></div> }
+                                >
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            "Images"
+                                        </h4>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            {image_urls.iter().map(|url| {
+                                        let url_clone = url.clone();
+                                        view! {
+                                            <img
+                                                src=url_clone.clone()
+                                                class="w-full rounded border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-80"
+                                                alt="Post image"
+                                                on:click=move |_| {
+                                                    // Open in new tab
+                                                    if let Some(window) = web_sys::window() {
+                                                        let _ = window.open_with_url_and_target(&url_clone, "_blank");
                                                     }
-                                                />
-                                            }
-                                        }).collect::<Vec<_>>()}
+                                                }
+                                            />
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                        </div>
                                     </div>
-                                </div>
-                            }.into_view()
-                        } else {
-                            ().into_view()
+                                </Show>
+                            }
                         }}
 
                         // Display video
-                        {if let Some(video_url) = &post.video_url {
-                            let video_url_clone = video_url.clone();
-                            view! {
-                                <div>
-                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                        "Video"
-                                    </h4>
-                                    <video
-                                        src=video_url_clone
-                                        controls=true
-                                        class="w-full rounded border border-gray-300 dark:border-gray-600"
-                                    >
-                                        "Your browser does not support the video tag."
-                                    </video>
-                                </div>
-                            }.into_view()
-                        } else {
-                            ().into_view()
+                        {move || {
+                            post.video_url.as_ref().map(|video_url| {
+                                let video_url_clone = video_url.clone();
+                                view! {
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                            "Video"
+                                        </h4>
+                                        <video
+                                            src=video_url_clone
+                                            controls=true
+                                            class="w-full rounded border border-gray-300 dark:border-gray-600"
+                                        >
+                                            "Your browser does not support the video tag."
+                                        </video>
+                                    </div>
+                                }
+                            })
                         }}
 
                         // Display likes (expandable) - Always show, even with zero
@@ -640,41 +661,43 @@ where
                                         <span class="text-sm font-semibold">
                                             "❤️ " {like_count} " Like" {if like_count == 1 { "" } else { "s" }}
                                         </span>
-                                        {if like_count > 0 {
-                                            view! {
+                                        {view! {
                                                 <span class="text-xs">
-                                                    {move || if show_likers.get() { "▼" } else { "▶" }}
-                                                </span>
-                                    }.into_view()
-                                } else {
-                                    ().into_view()
-                                }}
+                                      {move || if like_count > 0 {
+                                          if show_likers.get() { "▼" } else { "▶" }
+                                      } else {
+                                          ""
+                                      }}
+                                  </span>
+                      }}
                             </button>
 
-                            {move || if show_likers.get() && like_count > 0 {
-                                        view! {
-                                            <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
-                                                {likers_clone.iter().map(|liker| {
-                                                    let display = if let Some(name) = &liker.display_name {
-                                                        format!("{} (@{})", name, liker.handle)
-                                                    } else {
-                                                        format!("@{}", liker.handle)
-                                                    };
-                                                    view! {
-                                                        <a
-                                                            href=format!("https://bsky.app/profile/{}", liker.handle)
-                                                            target="_blank"
-                                                            class="block p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                                                        >
-                                                            {display}
-                                                        </a>
-                                                    }
-                                                }).collect::<Vec<_>>()}
-                                            </div>
-                                        }.into_view()
-                                    } else {
-                                        ().into_view()
-                                    }}
+                            {move || {
+                                if show_likers.get() && like_count > 0 {
+                                    Some(view! {
+                                        <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
+                                            {likers_clone.iter().map(|liker| {
+                                                let display = if let Some(name) = &liker.display_name {
+                                                    format!("{} (@{})", name, liker.handle)
+                                                } else {
+                                                    format!("@{}", liker.handle)
+                                                };
+                                                view! {
+                                                    <a
+                                                        href=format!("https://bsky.app/profile/{}", liker.handle)
+                                                        target="_blank"
+                                                        class="block p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                                                    >
+                                                        {display}
+                                                    </a>
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                    })
+                                } else {
+                                    None
+                                }
+                            }}
                                 </div>
                             }
                         }
@@ -698,41 +721,43 @@ where
                                         <span class="text-sm font-semibold">
                                             "🔁 " {repost_count} " Repost" {if repost_count == 1 { "" } else { "s" }}
                                         </span>
-                                        {if repost_count > 0 {
-                                            view! {
+                                        {view! {
                                                 <span class="text-xs">
-                                                    {move || if show_reposters.get() { "▼" } else { "▶" }}
-                                                </span>
-                                    }.into_view()
-                                } else {
-                                    ().into_view()
-                                }}
+                                      {move || if repost_count > 0 {
+                                          if show_reposters.get() { "▼" } else { "▶" }
+                                      } else {
+                                          ""
+                                      }}
+                                  </span>
+                      }}
                             </button>
 
-                            {move || if show_reposters.get() && repost_count > 0 {
-                                        view! {
-                                            <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
-                                                {reposters_clone.iter().map(|reposter| {
-                                                    let display = if let Some(name) = &reposter.display_name {
-                                                        format!("{} (@{})", name, reposter.handle)
-                                                    } else {
-                                                        format!("@{}", reposter.handle)
-                                                    };
-                                                    view! {
-                                                        <a
-                                                            href=format!("https://bsky.app/profile/{}", reposter.handle)
-                                                            target="_blank"
-                                                            class="block p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                                                        >
-                                                            {display}
-                                                        </a>
-                                                    }
-                                                }).collect::<Vec<_>>()}
-                                            </div>
-                                        }.into_view()
-                                    } else {
-                                        ().into_view()
-                                    }}
+                            {move || {
+                                if show_reposters.get() && repost_count > 0 {
+                                    Some(view! {
+                                        <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
+                                            {reposters_clone.iter().map(|reposter| {
+                                                let display = if let Some(name) = &reposter.display_name {
+                                                    format!("{} (@{})", name, reposter.handle)
+                                                } else {
+                                                    format!("@{}", reposter.handle)
+                                                };
+                                                view! {
+                                                    <a
+                                                        href=format!("https://bsky.app/profile/{}", reposter.handle)
+                                                        target="_blank"
+                                                        class="block p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                                                    >
+                                                        {display}
+                                                    </a>
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                    })
+                                } else {
+                                    None
+                                }
+                            }}
                                 </div>
                             }
                         }

@@ -11,10 +11,11 @@ use std::collections::HashMap;
 pub use crate::components::bulk_analysis::{BulkAnalysisStats, UserInfo};
 
 /// Authenticate with Bluesky
-pub async fn authenticate(handle: &str, password: &str) -> Result<String, String> {
+/// Returns a tuple of (access_token, user_did)
+pub async fn authenticate(handle: &str, password: &str) -> Result<(String, String), String> {
     create_session(handle, password)
         .await
-        .map(|session| session.access_jwt)
+        .map(|session| (session.access_jwt, session.did))
         .map_err(|e| format!("Authentication failed: {}", e))
 }
 
@@ -22,6 +23,7 @@ pub async fn authenticate(handle: &str, password: &str) -> Result<String, String
 pub async fn fetch_labels(
     input: &str,
     auth_token: Option<String>,
+    authenticated_user_did: Option<String>,
 ) -> Result<LabelCollection, String> {
     let bsky_labeler = if let Some(token) = &auth_token {
         LabelerClient::new_authenticated(token.clone())
@@ -67,26 +69,45 @@ pub async fn fetch_labels(
         }
     };
 
-    // If we have a DID, also query the user's PDS for admin labels
+    // Optionally query the user's own PDS for PDS-specific labels
+    // Note: Per ATProto architecture, labeler services (mod.bsky.app) are the primary
+    // source for labels. PDSes may implement label endpoints, but it's not their main role.
+    // We only query PDS when it's the authenticated user's own PDS.
     if let Some(did) = did_opt {
-        if let Ok(pds_endpoint) = resolve_did(&did).await {
-            let pds_labeler = if let Some(token) = &auth_token {
-                LabelerClient::with_url(pds_endpoint).with_auth(token.clone())
-            } else {
-                LabelerClient::with_url(pds_endpoint)
-            };
-            match pds_labeler.query_labels(&[subject]).await {
-                Ok(collection) => {
-                    all_labels.extend(collection.labels);
-                }
-                Err(e) => {
-                    // Propagate authentication errors to the user
-                    if matches!(e, atproto_client::Error::AuthenticationRequired(_)) {
-                        return Err(e.to_string());
+        if let (Some(token), Some(auth_did)) = (&auth_token, &authenticated_user_did) {
+            if did.as_str() == auth_did {
+                // Only query our own PDS with authentication
+                if let Ok(pds_endpoint) = resolve_did(&did).await {
+                    log::debug!(
+                        "Querying own PDS {} with authentication for PDS-specific labels",
+                        pds_endpoint
+                    );
+                    let pds_labeler =
+                        LabelerClient::with_url(pds_endpoint.clone()).with_auth(token.clone());
+
+                    match pds_labeler.query_labels(&[subject.clone()]).await {
+                        Ok(collection) => {
+                            if !collection.labels.is_empty() {
+                                log::info!("Successfully queried own PDS {} - found {} PDS-specific labels", pds_endpoint, collection.labels.len());
+                                all_labels.extend(collection.labels);
+                            } else {
+                                log::debug!(
+                                    "Own PDS {} returned no additional labels",
+                                    pds_endpoint
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            // Don't propagate PDS errors - they're optional
+                            log::debug!("Could not query own PDS {}: {} (this is OK, mod.bsky.app labels are still available)", pds_endpoint, e);
+                        }
                     }
-                    log::warn!("Failed to query PDS: {}", e);
                 }
+            } else {
+                log::debug!("Skipping PDS query - not querying own content (other users' PDSes are not queried per ATProto architecture)");
             }
+        } else {
+            log::debug!("Skipping PDS query - no authentication (PDS endpoints require auth)");
         }
     }
 

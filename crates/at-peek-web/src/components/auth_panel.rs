@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use leptos::*;
+use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::state::AppState;
@@ -8,10 +8,10 @@ use crate::state::AppState;
 #[component]
 pub fn AuthPanel() -> impl IntoView {
     let state = expect_context::<AppState>();
-    let show_auth = create_rw_signal(false);
-    let handle = create_rw_signal(String::new());
-    let password = create_rw_signal(String::new());
-    let is_authenticating = create_rw_signal(false);
+    let show_auth = RwSignal::new(false);
+    let handle = RwSignal::new(String::new());
+    let password = RwSignal::new(String::new());
+    let is_authenticating = RwSignal::new(false);
 
     let on_login = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -31,8 +31,9 @@ pub fn AuthPanel() -> impl IntoView {
 
         spawn_local(async move {
             match crate::utils::authenticate(&handle_val, &password_val).await {
-                Ok(token) => {
+                Ok((token, user_did)) => {
                     state.auth_token.set(Some(token));
+                    state.authenticated_user_did.set(Some(user_did));
                     state.is_authenticated.set(true);
                     state.error.set(None);
                     show_auth.set(false);
@@ -42,6 +43,7 @@ pub fn AuthPanel() -> impl IntoView {
                 Err(e) => {
                     state.error.set(Some(format!("Login failed: {}", e)));
                     state.auth_token.set(None);
+                    state.authenticated_user_did.set(None);
                     state.is_authenticated.set(false);
                 }
             }
@@ -51,6 +53,7 @@ pub fn AuthPanel() -> impl IntoView {
 
     let on_logout = move |_| {
         state.auth_token.set(None);
+        state.authenticated_user_did.set(None);
         state.is_authenticated.set(false);
         handle.set(String::new());
         password.set(String::new());
@@ -59,30 +62,31 @@ pub fn AuthPanel() -> impl IntoView {
 
     view! {
         <div class="flex items-center gap-2">
-            {move || if state.is_authenticated.get() {
-                view! {
+            <Show
+                when=move || state.is_authenticated.get()
+                fallback=move || view! {
                     <div class="flex items-center gap-2">
-                        <span class="text-sm text-green-600 dark:text-green-400">
-                            "🔓 Authenticated"
-                        </span>
                         <button
-                            on:click=on_logout
-                            class="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors"
+                            on:click=move |_| show_auth.set(true)
+                            class="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
                         >
-                            "Logout"
+                            "🔐 Login"
                         </button>
                     </div>
-                }.into_view()
-            } else {
-                view! {
+                }
+            >
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-green-600 dark:text-green-400">
+                        "🔓 Authenticated"
+                    </span>
                     <button
-                        on:click=move |_| show_auth.set(true)
-                        class="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                        on:click=on_logout
+                        class="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors"
                     >
-                        "🔐 Login"
+                        "Logout"
                     </button>
-                }.into_view()
-            }}
+                </div>
+            </Show>
         </div>
 
         {move || show_auth.get().then(|| view! {
