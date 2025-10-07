@@ -42,12 +42,7 @@ impl PostClient {
 
         log::debug!("Fetching posts from PDS: {}", url);
 
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(Error::Network)?;
+        let response = self.client.get(&url).send().await.map_err(Error::Network)?;
 
         let status = response.status();
 
