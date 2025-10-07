@@ -119,45 +119,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
-          targets: wasm32-unknown-unknown
-      
-      - name: Install trunk
-        run: cargo install trunk --locked
-      
-      - name: Install wasm-opt
-        run: |
-          npm install -g wasm-opt
-      
-      - name: Build web UI (release)
-        run: |
-          cd crates/at-peek-web
-          trunk build --release
-      
-      - name: Optimize WASM with wasm-opt
-        run: |
-          cd crates/at-peek-web/dist
-          echo "Original WASM size:"
-          ls -lh *.wasm
-          
-          # Find the wasm file
-          WASM_FILE=$(ls *.wasm)
-          
-          # Optimize with wasm-opt (aggressive optimization)
-          wasm-opt -Oz --strip-debug --strip-producers -o "${WASM_FILE}.opt" "${WASM_FILE}"
-          
-          # Replace original with optimized version
-          mv "${WASM_FILE}.opt" "${WASM_FILE}"
-          
-          echo ""
-          echo "Optimized WASM size:"
-          ls -lh *.wasm
+          name: wasm-dist
+          path: crates/at-peek-web/dist
       
       - name: Display build output
         run: |
-          echo "Final build artifacts:"
+          echo "Deployment artifacts:"
           ls -lh crates/at-peek-web/dist/
           echo ""
           echo "Total deployment size:"
