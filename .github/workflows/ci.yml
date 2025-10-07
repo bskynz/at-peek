@@ -70,7 +70,7 @@ jobs:
           ls -lh *.wasm
           
           WASM_FILE=$(ls *.wasm)
-          wasm-opt -Oz --enable-bulk-memory --strip-debug --strip-producers -o "${WASM_FILE}.opt" "${WASM_FILE}"
+          wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals --strip-debug --strip-producers -o "${WASM_FILE}.opt" "${WASM_FILE}"
           mv "${WASM_FILE}.opt" "${WASM_FILE}"
           
           echo "Post-optimization size:"
