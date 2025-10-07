@@ -53,35 +53,72 @@ pub async fn resolve_handle(handle: &Handle) -> Result<Did> {
         }
     }
 
-    // Fallback to HTTPS .well-known endpoint
-    let url = format!("https://{}/.well-known/atproto-did", handle.as_str());
+    // Fallback to Bluesky AppView API (CORS-friendly)
+    // Using resolveHandle instead of direct .well-known to avoid CORS issues
+    let url = format!(
+        "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle={}",
+        urlencoding::encode(handle.as_str())
+    );
 
-    log::debug!("Trying HTTPS resolution for {}", handle);
+    log::debug!("Trying AppView resolution for {}", handle);
 
     let response = reqwest::get(&url)
         .await
-        .map_err(|e| Error::HandleResolution(format!("Failed to fetch DID document: {}", e)))?;
+        .map_err(|e| {
+            // Check if this is likely a CORS error
+            let err_msg = e.to_string();
+            if err_msg.contains("CORS") || err_msg.contains("NetworkError") {
+                Error::HandleResolution(format!(
+                    "Cannot resolve handle '{}': Cross-origin request blocked. \
+                    This domain may not have proper ATproto configuration. \
+                    For custom domains, ensure DNS TXT record '_atproto.{}' is set correctly.",
+                    handle, handle
+                ))
+            } else {
+                Error::HandleResolution(format!(
+                    "Failed to resolve handle '{}': {}",
+                    handle, e
+                ))
+            }
+        })?;
 
     if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        
         return Err(Error::HandleResolution(format!(
-            "Could not resolve handle {} via DNS or HTTPS (HTTP {})",
+            "Could not resolve handle '{}' (HTTP {}). \
+            This handle may not exist or may not be properly configured for ATproto. {}",
             handle,
-            response.status()
+            status,
+            if !error_text.is_empty() {
+                format!("Details: {}", error_text)
+            } else {
+                String::new()
+            }
         )));
     }
 
-    let did_str = response
-        .text()
+    let response_json: serde_json::Value = response
+        .json()
         .await
-        .map_err(|e| Error::HandleResolution(format!("Failed to read response: {}", e)))?;
+        .map_err(|e| Error::HandleResolution(format!("Failed to parse response: {}", e)))?;
 
-    let did = Did::new(did_str.trim().to_string());
+    let did_str = response_json
+        .get("did")
+        .and_then(|d| d.as_str())
+        .ok_or_else(|| Error::HandleResolution(format!(
+            "No DID found for handle '{}'",
+            handle
+        )))?;
+
+    let did = Did::new(did_str.to_string());
 
     if !did.validate() {
         return Err(Error::InvalidDid(format!("Invalid DID returned: {}", did)));
     }
 
-    log::info!("Resolved {} to {} via HTTPS", handle, did);
+    log::info!("Resolved {} to {} via AppView", handle, did);
 
     Ok(did)
 }

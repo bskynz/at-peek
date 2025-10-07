@@ -374,7 +374,8 @@ where
             .map_err(|e| format!("Failed to resolve handle: {}", e))?
     };
 
-    // Fetch posts directly from PDS (includes ALL posts, even taken-down ones)
+    // Fetch posts directly from PDS
+    // Note: Banned/suspended accounts may be inaccessible
     progress_callback("Fetching posts from PDS...".to_string());
     let post_client = PostClient::new();
     let posts = post_client
@@ -391,6 +392,7 @@ where
                 posts_with_labels: 0,
                 labels_by_category: HashMap::new(),
                 top_label_values: Vec::new(),
+                account_labels: Vec::new(),
             },
             Vec::new(),
         ));
@@ -417,6 +419,28 @@ where
         log::warn!("Using UNAUTHENTICATED labeler client - admin labels will NOT be visible!");
         LabelerClient::new()
     };
+
+    // First, check for account-level labels on the DID itself
+    progress_callback("Checking account-level labels...".to_string());
+    log::info!("Querying account-level labels for DID: {}", did.as_str());
+    
+    let mut account_labels = Vec::new();
+    match bsky_labeler.query_labels(&[did.as_str().to_string()]).await {
+        Ok(collection) => {
+            log::info!(
+                "Account-level query returned {} labels",
+                collection.labels.len()
+            );
+            for label in &collection.labels {
+                log::info!("  Account Label: {} on {}", label.val, label.uri);
+            }
+            account_labels = collection.labels.clone();
+            all_labels.extend(collection.labels);
+        }
+        Err(e) => {
+            log::error!("Failed to query account-level labels: {}", e);
+        }
+    }
 
     for (i, chunk) in uris.chunks(batch_size).enumerate() {
         progress_callback(format!(
@@ -474,6 +498,11 @@ where
 
     // Build posts with labels for display
     let mut labeled_posts = Vec::new();
+    
+    // If account has moderation labels (e.g., banned), show last 10 posts regardless of individual labels
+    let has_account_moderation = !account_labels.is_empty();
+    let mut posts_added = 0;
+    
     for post in &posts {
         let post_labels: Vec<_> = all_labels
             .iter()
@@ -481,7 +510,11 @@ where
             .cloned()
             .collect();
 
-        if !post_labels.is_empty() {
+        // Show post if: has labels OR (account is moderated AND we haven't shown 10 yet)
+        let should_show = !post_labels.is_empty() 
+            || (has_account_moderation && posts_added < 10);
+
+        if should_show {
             let text = post
                 .value
                 .get("text")
@@ -525,11 +558,21 @@ where
                 likers,
                 reposters,
             });
+            
+            posts_added += 1;
         }
     }
 
-    // Sort posts by number of labels (most labeled first)
-    labeled_posts.sort_by(|a, b| b.labels.len().cmp(&a.labels.len()));
+    // Sort posts by number of labels (most labeled first), then by recency
+    labeled_posts.sort_by(|a, b| {
+        let label_cmp = b.labels.len().cmp(&a.labels.len());
+        if label_cmp == std::cmp::Ordering::Equal {
+            // If same number of labels, sort by created_at (most recent first)
+            b.created_at.cmp(&a.created_at)
+        } else {
+            label_cmp
+        }
+    });
 
     Ok((
         BulkAnalysisStats {
@@ -537,6 +580,7 @@ where
             posts_with_labels: posts_with_labels_set.len(),
             labels_by_category,
             top_label_values,
+            account_labels,
         },
         labeled_posts,
     ))

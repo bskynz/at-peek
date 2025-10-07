@@ -13,6 +13,7 @@ pub struct BulkAnalysisStats {
     pub posts_with_labels: usize,
     pub labels_by_category: HashMap<LabelCategory, usize>,
     pub top_label_values: Vec<(String, usize)>,
+    pub account_labels: Vec<atproto_client::Label>,
 }
 
 #[derive(Clone, Debug)]
@@ -169,6 +170,31 @@ fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
     view! {
         <div class="space-y-4">
             <h3 class="text-lg font-bold">"Analysis Results"</h3>
+
+            {(!stats.account_labels.is_empty()).then(|| view! {
+                <div class="p-4 bg-red-100 dark:bg-red-900 border-2 border-red-500 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <div class="text-2xl">"⚠️"</div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-red-900 dark:text-red-100 mb-2">
+                                "Account-Level Moderation Labels"
+                            </h4>
+                            <p class="text-sm text-red-800 dark:text-red-200 mb-3">
+                                "This account has been flagged by moderators. Posts are shown for transparency but may violate community guidelines."
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                {stats.account_labels.iter().map(|label| {
+                                    view! {
+                                        <span class="px-3 py-1 bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-100 rounded-full text-sm font-mono">
+                                            {&label.val}
+                                        </span>
+                                    }
+                                }).collect::<Vec<_>>()}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            })}
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">

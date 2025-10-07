@@ -16,7 +16,9 @@ impl PostClient {
         }
     }
 
-    /// Fetch posts directly from PDS (includes ALL posts, even taken-down ones)
+    /// Fetch posts directly from PDS
+    /// Note: Individual posts with moderation labels may be included, but banned/suspended
+    /// accounts may have their repositories completely inaccessible via PDS
     pub async fn list_records(
         &self,
         did: &Did,
@@ -51,10 +53,53 @@ impl PostClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(Error::LabelerUnavailable(format!(
-                "HTTP {}: {}",
-                status, error_text
-            )));
+            
+            // Provide user-friendly messages for common PDS errors
+            let error_message = match status.as_u16() {
+                400 => format!(
+                    "Bad request to PDS (HTTP 400). The repository may not exist or be inaccessible. {}",
+                    if !error_text.is_empty() { 
+                        format!("Details: {}", error_text) 
+                    } else { 
+                        String::new() 
+                    }
+                ),
+                403 => format!(
+                    "Access forbidden (HTTP 403). This account may be suspended, banned, or have restricted access. \
+                    The account's posts cannot be retrieved. {}",
+                    if !error_text.is_empty() { 
+                        format!("Details: {}", error_text) 
+                    } else { 
+                        String::new() 
+                    }
+                ),
+                404 => format!(
+                    "Repository not found (HTTP 404). This account may have been deleted, deactivated, \
+                    or the PDS endpoint may be incorrect. {}",
+                    if !error_text.is_empty() { 
+                        format!("Details: {}", error_text) 
+                    } else { 
+                        String::new() 
+                    }
+                ),
+                410 => "Account has been permanently deleted (HTTP 410)".to_string(),
+                500..=599 => format!(
+                    "PDS server error (HTTP {}). The Personal Data Server is experiencing issues. \
+                    Try again later.",
+                    status
+                ),
+                _ => format!(
+                    "Failed to fetch posts from PDS (HTTP {}). {}",
+                    status,
+                    if !error_text.is_empty() {
+                        format!("Details: {}", error_text)
+                    } else {
+                        "The repository may be unavailable.".to_string()
+                    }
+                ),
+            };
+            
+            return Err(Error::LabelerUnavailable(error_message));
         }
 
         let records_response: ListRecordsResponse = response
