@@ -21,23 +21,8 @@ jobs:
         with:
           components: rustfmt, clippy
       
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Cache target
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+      # Much faster and more comprehensive than manual caching
+      - uses: Swatinem/rust-cache@v2
       
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -62,8 +47,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       
+      # Use cargo-binstall for much faster installation (~10s vs ~5-10min)
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+      
       - name: Install trunk
-        run: cargo install trunk --locked
+        run: cargo binstall --no-confirm trunk
       
       - name: Install wasm-opt
         run: |
@@ -81,7 +70,7 @@ jobs:
           ls -lh *.wasm
           
           WASM_FILE=$(ls *.wasm)
-          wasm-opt -Oz --strip-debug --strip-producers -o "${WASM_FILE}.opt" "${WASM_FILE}"
+          wasm-opt -Oz --enable-bulk-memory --strip-debug --strip-producers -o "${WASM_FILE}.opt" "${WASM_FILE}"
           mv "${WASM_FILE}.opt" "${WASM_FILE}"
           
           echo "Post-optimization size:"
