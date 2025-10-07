@@ -371,7 +371,7 @@ pub async fn analyze_user_posts<F>(
     mut progress_callback: F,
 ) -> Result<(BulkAnalysisStats, Vec<PostWithLabels>), String>
 where
-    F: FnMut(String),
+    F: FnMut(String, u8),
 {
     // Strip @ symbol if present (users might type @alice.bsky.social)
     let input = input.trim_start_matches('@');
@@ -381,7 +381,7 @@ where
         atproto_client::Did::new(input.to_string())
     } else {
         let handle = Handle::new(input.to_string());
-        progress_callback("Resolving handle...".to_string());
+        progress_callback("Resolving handle...".to_string(), 5);
 
         resolve_handle(&handle)
             .await
@@ -390,14 +390,14 @@ where
 
     // Fetch posts directly from PDS
     // Note: Banned/suspended accounts may be inaccessible
-    progress_callback("Fetching posts from PDS...".to_string());
+    progress_callback("Fetching posts from PDS...".to_string(), 15);
     let post_client = PostClient::new();
     let posts = post_client
         .fetch_posts(&did, 1000)
         .await
         .map_err(|e| format!("Failed to fetch posts: {}", e))?;
 
-    progress_callback(format!("Fetched {} posts, querying labels...", posts.len()));
+    progress_callback(format!("Fetched {} posts, querying labels...", posts.len()), 20);
 
     if posts.is_empty() {
         return Ok((
@@ -435,7 +435,7 @@ where
     };
 
     // First, check for account-level labels on the DID itself
-    progress_callback("Checking account-level labels...".to_string());
+    progress_callback("Checking account-level labels...".to_string(), 25);
     log::info!("Querying account-level labels for DID: {}", did.as_str());
 
     let mut account_labels = Vec::new();
@@ -460,12 +460,15 @@ where
         }
     }
 
+    let total_batches = uris.len().div_ceil(batch_size);
     for (i, chunk) in uris.chunks(batch_size).enumerate() {
+        // Progress from 30% to 85% across all batches
+        let batch_progress = 30 + ((i as f32 / total_batches as f32) * 55.0) as u8;
         progress_callback(format!(
             "Querying mod.bsky.app: batch {}/{}...",
             i + 1,
-            uris.len().div_ceil(batch_size)
-        ));
+            total_batches
+        ), batch_progress);
 
         log::info!("Querying batch {} with {} URIs", i + 1, chunk.len());
 
@@ -496,7 +499,7 @@ where
         all_labels.len()
     );
 
-    progress_callback("Analyzing results...".to_string());
+    progress_callback("Analyzing results...".to_string(), 90);
 
     // Calculate statistics (only for post-level labels, not account labels)
     let mut posts_with_labels_set: std::collections::HashSet<String> =
@@ -528,8 +531,18 @@ where
     // If account has moderation labels (e.g., banned), show last 10 posts regardless of individual labels
     let has_account_moderation = !account_labels.is_empty();
     let mut posts_added = 0;
+    let mut posts_processed = 0;
 
     for post in &posts {
+        posts_processed += 1;
+        // Update progress from 90% to 99% as we process posts
+        if posts_processed % 100 == 0 || posts_processed == posts.len() {
+            let process_progress = 90 + ((posts_processed as f32 / posts.len() as f32) * 9.0) as u8;
+            progress_callback(
+                format!("Processing posts ({}/{})...", posts_processed, posts.len()),
+                process_progress
+            );
+        }
         let post_labels: Vec<_> = all_labels
             .iter()
             .filter(|l| l.uri == post.uri)
@@ -598,6 +611,8 @@ where
             label_cmp
         }
     });
+
+    progress_callback("Analysis complete!".to_string(), 100);
 
     Ok((
         BulkAnalysisStats {

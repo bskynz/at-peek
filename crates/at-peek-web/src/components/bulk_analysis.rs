@@ -47,6 +47,7 @@ pub fn BulkAnalysis() -> impl IntoView {
     let selected_post = create_rw_signal::<Option<PostWithLabels>>(None);
     let is_analyzing = create_rw_signal(false);
     let progress = create_rw_signal::<Option<String>>(None);
+    let progress_percent = create_rw_signal(0);
 
     let on_analyze = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -65,11 +66,13 @@ pub fn BulkAnalysis() -> impl IntoView {
         labeled_posts.set(Vec::new());
         is_analyzing.set(true);
         progress.set(Some("Starting analysis...".to_string()));
+        progress_percent.set(0);
 
         spawn_local(async move {
             let auth_token = state.auth_token.get();
-            match crate::utils::analyze_user_posts(&input, auth_token, |msg| {
+            match crate::utils::analyze_user_posts(&input, auth_token, |msg, percent| {
                 progress.set(Some(msg));
+                progress_percent.set(percent);
             })
             .await
             {
@@ -153,12 +156,26 @@ pub fn BulkAnalysis() -> impl IntoView {
                 }
             }}
 
-            {move || progress.get().map(|msg| view! {
-                <div class="mt-4 p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                    <p class="text-sm text-blue-800 dark:text-blue-200">
-                        {msg}
-                    </p>
-                </div>
+            {move || progress.get().map(|msg| {
+                let percent = progress_percent.get();
+                view! {
+                    <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg border border-blue-200 dark:border-blue-700">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                                {msg}
+                            </p>
+                            <span class="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                {percent}"%"
+                            </span>
+                        </div>
+                        <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2.5 overflow-hidden">
+                            <div
+                                class="bg-blue-600 dark:bg-blue-400 h-2.5 rounded-full transition-all duration-300 ease-out"
+                                style=move || format!("width: {}%", progress_percent.get())
+                            />
+                        </div>
+                    </div>
+                }
             })}
 
             {move || stats.get().map(|s| view! {
