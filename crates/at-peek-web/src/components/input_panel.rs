@@ -81,6 +81,32 @@ pub fn InputPanel() -> impl IntoView {
                 </button>
             </form>
 
+            {move || {
+                if state.auth_token.get().is_none() {
+                    Some(view! {
+                        <div class="mt-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 rounded-r-lg">
+                            <div class="flex items-start gap-3">
+                                <div class="text-xl">"⚠️"</div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                                        "Not Authenticated"
+                                    </p>
+                                    <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                                        "Some content requires authentication. Private accounts and certain moderation labels (like "
+                                        <code class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">"!ban"</code>
+                                        ", "
+                                        <code class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">"!takedown"</code>
+                                        ") will not be visible. Sign in with your Bluesky account to see all labels."
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    })
+                } else {
+                    None
+                }
+            }}
+
             {move || state.error.get().map(|err| view! {
                 <div class="mt-4 p-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg">
                     <p class="text-red-800 dark:text-red-200 text-sm">

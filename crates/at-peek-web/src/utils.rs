@@ -73,6 +73,10 @@ pub async fn fetch_labels(
                     all_labels.extend(collection.labels);
                 }
                 Err(e) => {
+                    // Propagate authentication errors to the user
+                    if matches!(e, atproto_client::Error::AuthenticationRequired(_)) {
+                        return Err(e.to_string());
+                    }
                     log::warn!("Failed to query PDS: {}", e);
                 }
             }

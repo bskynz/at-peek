@@ -73,10 +73,6 @@ pub fn App() -> impl IntoView {
                         <a href="https://github.com/bskynz/at-peek" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">
                             "GitHub"
                         </a>
-                        " • "
-                        <a href=".specify/memory/constitution.md" class="text-blue-600 dark:text-blue-400 hover:underline">
-                            "Constitution"
-                        </a>
                     </p>
                     <p class="mt-2 text-xs">
                         "🔒 All processing happens locally in your browser. No data leaves your device."
