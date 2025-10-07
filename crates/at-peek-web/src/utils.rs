@@ -423,7 +423,7 @@ where
     // First, check for account-level labels on the DID itself
     progress_callback("Checking account-level labels...".to_string());
     log::info!("Querying account-level labels for DID: {}", did.as_str());
-    
+
     let mut account_labels = Vec::new();
     match bsky_labeler.query_labels(&[did.as_str().to_string()]).await {
         Ok(collection) => {
@@ -498,11 +498,11 @@ where
 
     // Build posts with labels for display
     let mut labeled_posts = Vec::new();
-    
+
     // If account has moderation labels (e.g., banned), show last 10 posts regardless of individual labels
     let has_account_moderation = !account_labels.is_empty();
     let mut posts_added = 0;
-    
+
     for post in &posts {
         let post_labels: Vec<_> = all_labels
             .iter()
@@ -511,8 +511,7 @@ where
             .collect();
 
         // Show post if: has labels OR (account is moderated AND we haven't shown 10 yet)
-        let should_show = !post_labels.is_empty() 
-            || (has_account_moderation && posts_added < 10);
+        let should_show = !post_labels.is_empty() || (has_account_moderation && posts_added < 10);
 
         if should_show {
             let text = post
@@ -558,7 +557,7 @@ where
                 likers,
                 reposters,
             });
-            
+
             posts_added += 1;
         }
     }

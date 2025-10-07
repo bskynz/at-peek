@@ -62,30 +62,25 @@ pub async fn resolve_handle(handle: &Handle) -> Result<Did> {
 
     log::debug!("Trying AppView resolution for {}", handle);
 
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| {
-            // Check if this is likely a CORS error
-            let err_msg = e.to_string();
-            if err_msg.contains("CORS") || err_msg.contains("NetworkError") {
-                Error::HandleResolution(format!(
-                    "Cannot resolve handle '{}': Cross-origin request blocked. \
+    let response = reqwest::get(&url).await.map_err(|e| {
+        // Check if this is likely a CORS error
+        let err_msg = e.to_string();
+        if err_msg.contains("CORS") || err_msg.contains("NetworkError") {
+            Error::HandleResolution(format!(
+                "Cannot resolve handle '{}': Cross-origin request blocked. \
                     This domain may not have proper ATproto configuration. \
                     For custom domains, ensure DNS TXT record '_atproto.{}' is set correctly.",
-                    handle, handle
-                ))
-            } else {
-                Error::HandleResolution(format!(
-                    "Failed to resolve handle '{}': {}",
-                    handle, e
-                ))
-            }
-        })?;
+                handle, handle
+            ))
+        } else {
+            Error::HandleResolution(format!("Failed to resolve handle '{}': {}", handle, e))
+        }
+    })?;
 
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_default();
-        
+
         return Err(Error::HandleResolution(format!(
             "Could not resolve handle '{}' (HTTP {}). \
             This handle may not exist or may not be properly configured for ATproto. {}",
@@ -107,10 +102,7 @@ pub async fn resolve_handle(handle: &Handle) -> Result<Did> {
     let did_str = response_json
         .get("did")
         .and_then(|d| d.as_str())
-        .ok_or_else(|| Error::HandleResolution(format!(
-            "No DID found for handle '{}'",
-            handle
-        )))?;
+        .ok_or_else(|| Error::HandleResolution(format!("No DID found for handle '{}'", handle)))?;
 
     let did = Did::new(did_str.to_string());
 

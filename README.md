@@ -73,7 +73,7 @@ cargo install trunk
 rustup target add wasm32-unknown-unknown
 
 # Clone the repository
-git clone https://github.com/yourusername/at-peek.git
+git clone https://github.com/bskynz/at-peek.git
 cd at-peek
 
 # Run development server with hot reload
@@ -136,7 +136,7 @@ All contributions must align with these principles. See [CONTRIBUTING.md](CONTRI
 We welcome contributions! Please:
 
 1. Read the [constitution](.specify/memory/constitution.md) to understand project values
-2. Check open [issues](https://github.com/yourusername/at-peek/issues) or propose new ones
+2. Check open [issues](https://github.com/bskynz/at-peek/issues) or propose new ones
 3. Submit pull requests with clear descriptions and tests
 4. Follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
 
@@ -153,7 +153,7 @@ We welcome contributions! Please:
 - [ ] Dark mode and accessibility improvements
 - [ ] Export labels to JSON/CSV for analysis
 
-See [open issues](https://github.com/yourusername/at-peek/issues) for detailed status.
+See [open issues](https://github.com/bskynz/at-peek/issues) for detailed status.
 
 ---
 

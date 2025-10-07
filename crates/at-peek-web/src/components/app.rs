@@ -69,8 +69,8 @@ pub fn App() -> impl IntoView {
             <footer class="mt-16 py-8 border-t border-gray-200 dark:border-gray-700">
                 <div class="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
                     <p>
-                        "at-peek is open source • "
-                        <a href="https://github.com/yourusername/at-peek" class="text-blue-600 dark:text-blue-400 hover:underline">
+                        "at-peek v0.1.0 is open source • "
+                        <a href="https://github.com/bskynz/at-peek" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">
                             "GitHub"
                         </a>
                         " • "

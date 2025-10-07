@@ -16,13 +16,22 @@ pub fn Header() -> impl IntoView {
                                 "at-peek"
                             </h1>
                             <p class="text-sm text-gray-600 dark:text-gray-400">
-                                "ATproto Label Inspector"
+                                "ATproto Label Inspector "
+                                <span class="text-xs opacity-75">"v0.1.0"</span>
                             </p>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-4">
                         <AuthPanel />
+                        <a
+                            href="https://github.com/bskynz/at-peek"
+                            target="_blank"
+                            class="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            title="View source on GitHub"
+                        >
+                            <span>"🔗 GitHub"</span>
+                        </a>
                         <a
                             href="https://docs.bsky.app/docs/advanced-guides/moderation"
                             target="_blank"
