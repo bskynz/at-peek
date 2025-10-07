@@ -125,6 +125,34 @@ pub fn BulkAnalysis() -> impl IntoView {
                 </button>
             </form>
 
+            {move || {
+                if state.auth_token.get().is_none() {
+                    Some(view! {
+                        <div class="mt-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 rounded-r-lg">
+                            <div class="flex items-start gap-3">
+                                <div class="text-xl">"⚠️"</div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                                        "Not Authenticated"
+                                    </p>
+                                    <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                                        "Some moderation actions (like "
+                                        <code class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">"!ban"</code>
+                                        ", "
+                                        <code class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">"!takedown"</code>
+                                        ", "
+                                        <code class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">"!hide"</code>
+                                        ") will not be visible. Sign in with your Bluesky account to see all labels."
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    })
+                } else {
+                    None
+                }
+            }}
+
             {move || progress.get().map(|msg| view! {
                 <div class="mt-4 p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
                     <p class="text-sm text-blue-800 dark:text-blue-200">

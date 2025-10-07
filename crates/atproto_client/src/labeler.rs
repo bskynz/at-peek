@@ -112,11 +112,17 @@ impl LabelerClient {
             if status == reqwest::StatusCode::UNAUTHORIZED
                 || status == reqwest::StatusCode::FORBIDDEN
             {
-                return Err(Error::AuthenticationRequired(format!(
-                    "This content requires authentication to view labels. Please sign in with your Bluesky account. (HTTP {}{})",
-                    status,
-                    if !error_text.is_empty() { format!(": {}", error_text) } else { String::new() }
-                )));
+                // Provide a helpful message - could be a private account or auth-required labels
+                let message = if error_text.contains("requires auth")
+                    || error_text.contains("private")
+                    || error_text.contains("restricted")
+                {
+                    "🔒 This account has restricted their profile and requires you to sign in to view their content. Please authenticate with your Bluesky account to continue."
+                } else {
+                    "🔒 Authentication required to view moderation labels for this content. Some accounts or labels require you to be signed in. Please authenticate with your Bluesky account."
+                };
+
+                return Err(Error::AuthenticationRequired(message.to_string()));
             }
 
             return Err(Error::LabelerUnavailable(format!(
