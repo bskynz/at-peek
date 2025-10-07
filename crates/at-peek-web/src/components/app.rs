@@ -77,6 +77,9 @@ pub fn App() -> impl IntoView {
                     <p class="mt-2 text-xs">
                         "🔒 All processing happens locally in your browser. No data leaves your device."
                     </p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                        "Note: This site is hosted on Cloudflare Pages. Cloudflare terminates TLS and can technically access data in transit, including authentication credentials. Use app passwords, not your main account password."
+                    </p>
                 </div>
             </footer>
         </div>

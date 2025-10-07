@@ -29,6 +29,9 @@ pub async fn fetch_labels(
         LabelerClient::new()
     };
 
+    // Strip @ symbol if present (users might type @alice.bsky.social)
+    let input = input.trim_start_matches('@');
+
     // Determine what type of input we have
     let (subject, did_opt) = if input.starts_with("at://") {
         // AT-URI
@@ -370,6 +373,9 @@ pub async fn analyze_user_posts<F>(
 where
     F: FnMut(String),
 {
+    // Strip @ symbol if present (users might type @alice.bsky.social)
+    let input = input.trim_start_matches('@');
+
     // Resolve handle to DID if needed
     let did = if input.starts_with("did:") {
         atproto_client::Did::new(input.to_string())
