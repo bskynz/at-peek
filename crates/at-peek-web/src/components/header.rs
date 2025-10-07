@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use super::AuthPanel;
-use leptos::*;
+use leptos::prelude::*;
 
 #[component]
 pub fn Header() -> impl IntoView {

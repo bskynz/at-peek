@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use leptos::*;
+use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::state::AppState;
@@ -27,7 +27,8 @@ pub fn InputPanel() -> impl IntoView {
 
         spawn_local(async move {
             let auth_token = state.auth_token.get();
-            match utils::fetch_labels(&input, auth_token).await {
+            let auth_did = state.authenticated_user_did.get();
+            match utils::fetch_labels(&input, auth_token, auth_did).await {
                 Ok(collection) => {
                     state.labels.set(Some(collection));
                     state.error.set(None);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use atproto_client::Label;
-use leptos::*;
+use leptos::prelude::*;
 
 use crate::utils;
 
@@ -57,8 +57,8 @@ pub fn LabelBadge(label: Label) -> impl IntoView {
                             <span class="font-semibold">"Created: "</span>
                             <span>{formatted_time}</span>
                         </div>
-                        {label.exp.map(|exp| {
-                            let formatted_exp = utils::format_timestamp(&exp);
+                        {label.exp.as_ref().map(|exp| {
+                            let formatted_exp = utils::format_timestamp(exp);
                             view! {
                                 <div>
                                     <span class="font-semibold">"Expires: "</span>

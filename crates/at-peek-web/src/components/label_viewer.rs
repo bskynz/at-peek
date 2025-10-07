@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use atproto_client::LabelCategory;
-use leptos::*;
+use leptos::prelude::*;
 
 use super::{EmptyState, LabelBadge};
 use crate::state::AppState;
@@ -35,35 +35,37 @@ pub fn LabelViewer() -> impl IntoView {
             >
                 {move || {
                     let Some(categories) = categorized_labels() else {
-                        return view! { <div/> }.into_view();
+                        return view! { <div></div> }.into_any();
                     };
 
                     if categories.is_empty() {
-                        return view! { <EmptyState /> }.into_view();
+                        return view! { <div><EmptyState /></div> }.into_any();
                     }
 
                     view! {
-                        <div class="space-y-6">
-                            <h2 class="text-xl font-bold mb-4">
-                                "🏷️ Moderation Labels Found"
-                            </h2>
+                        <div>
+                            <div class="space-y-6">
+                                <h2 class="text-xl font-bold mb-4">
+                                    "🏷️ Moderation Labels Found"
+                                </h2>
 
-                            <For
-                                each=move || {
-                                    let mut cats: Vec<_> = categories.iter()
-                                        .map(|(k, v)| (k.clone(), v.clone()))
-                                        .collect();
-                                    cats.sort_by_key(|(cat, _)| format!("{:?}", cat));
-                                    cats
-                                }
-                                key=|(cat, _)| format!("{:?}", cat)
-                                let:item
-                            >
-                                <CategoryGroup category=item.0 labels=item.1 />
-                            </For>
+                                <For
+                                    each=move || {
+                                        let mut cats: Vec<_> = categories.iter()
+                                            .map(|(k, v)| (k.clone(), v.clone()))
+                                            .collect();
+                                        cats.sort_by_key(|(cat, _)| format!("{:?}", cat));
+                                        cats
+                                    }
+                                    key=|(cat, _)| format!("{:?}", cat)
+                                    let:item
+                                >
+                                    <CategoryGroup category=item.0 labels=item.1 />
+                                </For>
+                            </div>
                         </div>
-                    }.into_view()
-                }}
+                    }.into_any()
+                }.into_any()}
             </Show>
         </div>
     }

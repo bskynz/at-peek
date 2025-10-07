@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Framework Upgrade**: Migrated from Leptos 0.6 to Leptos 0.7 (2025-10-07)
+  - Updated all Leptos dependencies to version 0.7
+  - Simplified feature flags (removed feature propagations)
+  - Updated imports to use `leptos::prelude::*` pattern
+  - Updated mount function to `leptos::mount::mount_to_body`
+  - **Expected Performance**: ~15-20% smaller WASM bundle size
+  - **Benefits**: Improved rendering performance, better async/await support, enhanced reactivity
+  - **Breaking Changes**: None for users (internal framework upgrade only)
+  - See `specs/001-leptos-0.7-migration/` for detailed migration documentation
+
 ### Added
 - Initial project structure with Cargo workspace
 - `atproto_client` crate for ATproto API interactions
