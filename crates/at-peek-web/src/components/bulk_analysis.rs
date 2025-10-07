@@ -1,0 +1,616 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+use leptos::*;
+use wasm_bindgen_futures::spawn_local;
+use std::collections::HashMap;
+
+use crate::state::AppState;
+use atproto_client::LabelCategory;
+
+#[derive(Clone, Debug)]
+pub struct BulkAnalysisStats {
+    pub total_posts: usize,
+    pub posts_with_labels: usize,
+    pub labels_by_category: HashMap<LabelCategory, usize>,
+    pub top_label_values: Vec<(String, usize)>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PostWithLabels {
+    pub uri: String,
+    pub text: String,
+    pub labels: Vec<atproto_client::Label>,
+    pub created_at: String,
+    pub has_media: bool,
+    pub image_urls: Vec<String>,
+    pub video_url: Option<String>,
+    pub like_count: usize,
+    pub repost_count: usize,
+    pub likers: Vec<UserInfo>,
+    pub reposters: Vec<UserInfo>,
+}
+
+#[derive(Clone, Debug)]
+pub struct UserInfo {
+    #[allow(dead_code)]
+    pub did: String,
+    pub handle: String,
+    pub display_name: Option<String>,
+}
+
+#[component]
+pub fn BulkAnalysis() -> impl IntoView {
+    let state = expect_context::<AppState>();
+    let stats = create_rw_signal::<Option<BulkAnalysisStats>>(None);
+    let labeled_posts = create_rw_signal::<Vec<PostWithLabels>>(Vec::new());
+    let selected_post = create_rw_signal::<Option<PostWithLabels>>(None);
+    let is_analyzing = create_rw_signal(false);
+    let progress = create_rw_signal::<Option<String>>(None);
+    
+    let on_analyze = move |ev: leptos::ev::SubmitEvent| {
+        ev.prevent_default();
+        
+        let input = state.subject_input.get();
+        
+        if input.trim().is_empty() {
+            state.error.set(Some("Please enter a Bluesky handle".to_string()));
+            return;
+        }
+        
+        state.error.set(None);
+        stats.set(None);
+        labeled_posts.set(Vec::new());
+        is_analyzing.set(true);
+        progress.set(Some("Starting analysis...".to_string()));
+        
+        spawn_local(async move {
+            let auth_token = state.auth_token.get();
+            match crate::utils::analyze_user_posts(&input, auth_token, |msg| {
+                progress.set(Some(msg));
+            }).await {
+                Ok((analysis_stats, posts)) => {
+                    stats.set(Some(analysis_stats));
+                    labeled_posts.set(posts);
+                    state.error.set(None);
+                    progress.set(None);
+                }
+                Err(e) => {
+                    state.error.set(Some(format!("Error: {}", e)));
+                    stats.set(None);
+                    labeled_posts.set(Vec::new());
+                    progress.set(None);
+                }
+            }
+            is_analyzing.set(false);
+        });
+    };
+    
+    view! {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">
+                "📊 Bulk Post Analysis"
+            </h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                "Analyze the last 1000 posts from a user to see label statistics"
+            </p>
+            
+            <form on:submit=on_analyze>
+                <div class="mb-4">
+                    <input
+                        type="text"
+                        placeholder="Enter Bluesky handle (e.g., alice.bsky.social)"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        prop:value=move || state.subject_input.get()
+                        on:input=move |ev| {
+                            state.subject_input.set(event_target_value(&ev));
+                        }
+                    />
+                </div>
+                
+                <button
+                    type="submit"
+                    disabled=move || is_analyzing.get()
+                    class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                >
+                    {move || if is_analyzing.get() {
+                        "🔄 Analyzing..."
+                    } else {
+                        "📊 Analyze Last 1000 Posts"
+                    }}
+                </button>
+            </form>
+            
+            {move || progress.get().map(|msg| view! {
+                <div class="mt-4 p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <p class="text-sm text-blue-800 dark:text-blue-200">
+                        {msg}
+                    </p>
+                </div>
+            })}
+            
+            {move || stats.get().map(|s| view! {
+                <div class="mt-6">
+                    <StatsDisplay stats=s />
+                </div>
+            })}
+            
+            {move || {
+                let posts = labeled_posts.get();
+                if !posts.is_empty() {
+                    Some(view! {
+                        <div class="mt-6">
+                            <LabeledPostsList posts=posts selected_post=selected_post />
+                        </div>
+                    })
+                } else {
+                    None
+                }
+            }}
+            
+            {move || selected_post.get().map(|post| view! {
+                <PostDetailModal post=post on_close=move || selected_post.set(None) />
+            })}
+        </div>
+    }
+}
+
+#[component]
+fn StatsDisplay(stats: BulkAnalysisStats) -> impl IntoView {
+    let percentage_with_labels = if stats.total_posts > 0 {
+        stats.posts_with_labels as f64 / stats.total_posts as f64 * 100.0
+    } else {
+        0.0
+    };
+    
+    view! {
+        <div class="space-y-4">
+            <h3 class="text-lg font-bold">"Analysis Results"</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {stats.total_posts}
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        "Total Posts Analyzed"
+                    </div>
+                </div>
+                
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {stats.posts_with_labels}
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        "Posts with Labels"
+                    </div>
+                </div>
+                
+                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="text-2xl font-bold text-red-600 dark:text-red-400">
+                        {format!("{:.1}%", percentage_with_labels)}
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        "Labeled Posts"
+                    </div>
+                </div>
+            </div>
+            
+            {if !stats.labels_by_category.is_empty() {
+                view! {
+                    <div>
+                        <h4 class="text-md font-bold mb-3">"Labels by Category"</h4>
+                        <div class="space-y-2">
+                            {stats.labels_by_category.iter().map(|(category, count)| {
+                                let total = stats.total_posts as f64;
+                                let pct = *count as f64 / total * 100.0;
+                                let count_val = *count;
+                                let cat = category.clone();
+                                
+                                view! {
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xl">{cat.icon()}</span>
+                                            <span class="font-medium">{cat.name()}</span>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="font-bold">{count_val}</span>
+                                            <span class="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                                                {format!("({:.1}%)", pct)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            }).collect::<Vec<_>>()}
+                        </div>
+                    </div>
+                }.into_view()
+            } else {
+                view! {
+                    <div class="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                        <p class="text-green-800 dark:text-green-200">
+                            "✅ No moderation labels found on any posts!"
+                        </p>
+                    </div>
+                }.into_view()
+            }}
+            
+            {if !stats.top_label_values.is_empty() {
+                view! {
+                    <div>
+                        <h4 class="text-md font-bold mb-3">"Top Label Types"</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {stats.top_label_values.iter().take(6).map(|(label, count)| {
+                                let label_val = label.clone();
+                                let count_val = *count;
+                                
+                                view! {
+                                    <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                        <div class="font-mono text-sm font-bold">{label_val}</div>
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                                            {format!("{} occurrence{}", count_val, if count_val == 1 { "" } else { "s" })}
+                                        </div>
+                                    </div>
+                                }
+                            }).collect::<Vec<_>>()}
+                        </div>
+                    </div>
+                }.into_view()
+            } else {
+                view! {                }.into_view()
+            }}
+        </div>
+    }
+}
+
+#[component]
+fn LabeledPostsList(posts: Vec<PostWithLabels>, selected_post: RwSignal<Option<PostWithLabels>>) -> impl IntoView {
+    view! {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold mb-4">
+                "📝 Posts with Labels (" {posts.len()} ")"
+            </h3>
+            <div class="space-y-2 max-h-96 overflow-y-auto">
+                <For
+                    each=move || posts.clone()
+                    key=|post| post.uri.clone()
+                    children=move |post: PostWithLabels| {
+                        let post_clone = post.clone();
+                        view! {
+                            <div
+                                class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                                on:click=move |_| selected_post.set(Some(post_clone.clone()))
+                            >
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm text-gray-900 dark:text-gray-100 truncate mb-2">
+                                            {if post.text.is_empty() {
+                                                "[No text]".to_string()
+                                            } else if post.text.len() > 100 {
+                                                format!("{}...", &post.text[..100])
+                                            } else {
+                                                post.text.clone()
+                                            }}
+                                        </p>
+                                        <div class="flex flex-wrap gap-1 mb-1">
+                                            {post.labels.iter().map(|label| {
+                                                let category = label.category();
+                                                let color = match category {
+                                                    LabelCategory::AdultContent => "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                                                    LabelCategory::Violence => "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+                                                    LabelCategory::Spam => "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                                                    LabelCategory::Hate => "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+                                                    LabelCategory::ModerationAction => "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
+                                                    _ => "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+                                                };
+                                                view! {
+                                                    <span class=format!("px-2 py-1 rounded text-xs font-medium {}", color)>
+                                                        {&label.val}
+                                                    </span>
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            {crate::utils::format_timestamp(&post.created_at)}
+                                            {if post.has_media { " • 📎 Has media" } else { "" }}
+                                        </p>
+                                        <div class="flex gap-3 mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                            <span>{"❤️ "}{post.like_count}{" likes"}</span>
+                                            <span>{"🔁 "}{post.repost_count}{" reposts"}</span>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4 flex-shrink-0">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                            {post.labels.len()} " labels"
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                />
+            </div>
+        </div>
+    }
+}
+
+#[component]
+fn PostDetailModal<F>(post: PostWithLabels, on_close: F) -> impl IntoView
+where
+    F: Fn() + 'static + Copy,
+{
+    let show_likers = create_rw_signal(false);
+    let show_reposters = create_rw_signal(false);
+    
+    view! {
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+            on:click=move |_| on_close()
+        >
+            <div
+                class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                on:click=|ev| ev.stop_propagation()
+            >
+                <div class="p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+                            "Post Details"
+                        </h3>
+                        <button
+                            on:click=move |_| on_close()
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            "✕"
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                "Content"
+                            </h4>
+                            <p class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
+                                {if post.text.is_empty() { "[No text content]".to_string() } else { post.text.clone() }}
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                "Labels (" {post.labels.len()} ")"
+                            </h4>
+                            <div class="space-y-2">
+                                {post.labels.iter().map(|label| {
+                                    let category = label.category();
+                                    view! {
+                                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="font-mono text-sm font-semibold">
+                                                    {category.icon()} " " {&label.val}
+                                                </span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                                    {category.name()}
+                                                </span>
+                                            </div>
+                                            <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                                <div>"Source: " <span class="font-mono">{crate::utils::shorten_did(&label.src)}</span></div>
+                                                <div>"Applied: " {crate::utils::format_timestamp(&label.cts)}</div>
+                                                {if !post.created_at.is_empty() {
+                                                    let duration = crate::utils::calculate_duration(&post.created_at, &label.cts);
+                                                    let is_moderation = label.val.starts_with('!');
+                                                    let color = if is_moderation {
+                                                        "text-pink-600 dark:text-pink-400 font-semibold"
+                                                    } else {
+                                                        "text-gray-600 dark:text-gray-400"
+                                                    };
+                                                    view! {
+                                                        <div class=format!("flex items-center gap-1 {}", color)>
+                                                            <span>"⏱️ "</span>
+                                                            <span>{duration}</span>
+                                                            <span>" after post"</span>
+                                                        </div>
+                                                    }.into_view()
+                                                } else {
+                                                    view! { <></> }.into_view()
+                                                }}
+                                            </div>
+                                        </div>
+                                    }
+                                }).collect::<Vec<_>>()}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                "URI"
+                            </h4>
+                            <a
+                                href=format!("https://bsky.app/profile/{}", post.uri.replace("at://", "").replace("/app.bsky.feed.post/", "/post/"))
+                                target="_blank"
+                                class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-mono break-all"
+                            >
+                                {&post.uri}
+                            </a>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                "Posted"
+                            </h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                {crate::utils::format_timestamp(&post.created_at)}
+                            </p>
+                        </div>
+                        
+                        // Display images
+                        {if !post.image_urls.is_empty() {
+                            view! {
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        "Images"
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        {post.image_urls.iter().map(|url| {
+                                            let url_clone = url.clone();
+                                            view! {
+                                                <img
+                                                    src=url_clone.clone()
+                                                    class="w-full rounded border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-80"
+                                                    alt="Post image"
+                                                    on:click=move |_| {
+                                                        // Open in new tab
+                                                        if let Some(window) = web_sys::window() {
+                                                            let _ = window.open_with_url_and_target(&url_clone, "_blank");
+                                                        }
+                                                    }
+                                                />
+                                            }
+                                        }).collect::<Vec<_>>()}
+                                    </div>
+                                </div>
+                            }.into_view()
+                        } else {
+                            view! { <></> }.into_view()
+                        }}
+                        
+                        // Display video
+                        {if let Some(video_url) = &post.video_url {
+                            let video_url_clone = video_url.clone();
+                            view! {
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        "Video"
+                                    </h4>
+                                    <video
+                                        src=video_url_clone
+                                        controls=true
+                                        class="w-full rounded border border-gray-300 dark:border-gray-600"
+                                    >
+                                        "Your browser does not support the video tag."
+                                    </video>
+                                </div>
+                            }.into_view()
+                        } else {
+                            view! { <></> }.into_view()
+                        }}
+                        
+                        // Display likes (expandable) - Always show, even with zero
+                        {
+                            let likers_clone = post.likers.clone();
+                            let like_count = post.like_count;
+                            view! {
+                                <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                    <button
+                                        class="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                        on:click=move |e| {
+                                            e.stop_propagation();
+                                            if like_count > 0 {
+                                                show_likers.update(|v| *v = !*v);
+                                            }
+                                        }
+                                        disabled=like_count == 0
+                                    >
+                                        <span class="text-sm font-semibold">
+                                            "❤️ " {like_count} " Like" {if like_count == 1 { "" } else { "s" }}
+                                        </span>
+                                        {if like_count > 0 {
+                                            view! {
+                                                <span class="text-xs">
+                                                    {move || if show_likers.get() { "▼" } else { "▶" }}
+                                                </span>
+                                            }.into_view()
+                                        } else {
+                                            view! { <></> }.into_view()
+                                        }}
+                                    </button>
+                                    
+                                    {move || if show_likers.get() && like_count > 0 {
+                                        view! {
+                                            <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
+                                                {likers_clone.iter().map(|liker| {
+                                                    let display = if let Some(name) = &liker.display_name {
+                                                        format!("{} (@{})", name, liker.handle)
+                                                    } else {
+                                                        format!("@{}", liker.handle)
+                                                    };
+                                                    view! {
+                                                        <a
+                                                            href=format!("https://bsky.app/profile/{}", liker.handle)
+                                                            target="_blank"
+                                                            class="block p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                                                        >
+                                                            {display}
+                                                        </a>
+                                                    }
+                                                }).collect::<Vec<_>>()}
+                                            </div>
+                                        }.into_view()
+                                    } else {
+                                        view! { <></> }.into_view()
+                                    }}
+                                </div>
+                            }
+                        }
+                        
+                        // Display reposts (expandable) - Always show, even with zero
+                        {
+                            let reposters_clone = post.reposters.clone();
+                            let repost_count = post.repost_count;
+                            view! {
+                                <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                    <button
+                                        class="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                        on:click=move |e| {
+                                            e.stop_propagation();
+                                            if repost_count > 0 {
+                                                show_reposters.update(|v| *v = !*v);
+                                            }
+                                        }
+                                        disabled=repost_count == 0
+                                    >
+                                        <span class="text-sm font-semibold">
+                                            "🔁 " {repost_count} " Repost" {if repost_count == 1 { "" } else { "s" }}
+                                        </span>
+                                        {if repost_count > 0 {
+                                            view! {
+                                                <span class="text-xs">
+                                                    {move || if show_reposters.get() { "▼" } else { "▶" }}
+                                                </span>
+                                            }.into_view()
+                                        } else {
+                                            view! { <></> }.into_view()
+                                        }}
+                                    </button>
+                                    
+                                    {move || if show_reposters.get() && repost_count > 0 {
+                                        view! {
+                                            <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
+                                                {reposters_clone.iter().map(|reposter| {
+                                                    let display = if let Some(name) = &reposter.display_name {
+                                                        format!("{} (@{})", name, reposter.handle)
+                                                    } else {
+                                                        format!("@{}", reposter.handle)
+                                                    };
+                                                    view! {
+                                                        <a
+                                                            href=format!("https://bsky.app/profile/{}", reposter.handle)
+                                                            target="_blank"
+                                                            class="block p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                                                        >
+                                                            {display}
+                                                        </a>
+                                                    }
+                                                }).collect::<Vec<_>>()}
+                                            </div>
+                                        }.into_view()
+                                    } else {
+                                        view! { <></> }.into_view()
+                                    }}
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
