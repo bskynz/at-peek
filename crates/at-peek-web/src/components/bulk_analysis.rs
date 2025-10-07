@@ -471,7 +471,7 @@ where
 {
     let show_likers = create_rw_signal(false);
     let show_reposters = create_rw_signal(false);
-    
+
     // Clone the post fields to avoid move issues
     let post_created_at = post.created_at.clone();
     let post_image_urls = post.image_urls.clone();
@@ -547,7 +547,7 @@ where
                                                             </div>
                                                         }
                                                     } else {
-                                                        view! { 
+                                                        view! {
                                                             <div class=format!("flex items-center gap-1 {}", "text-gray-600 dark:text-gray-400")>
                                                                 <span>{"⏱️ "}</span>
                                                                 <span>{"No timestamp available".to_string()}</span>
