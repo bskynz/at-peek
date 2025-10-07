@@ -73,8 +73,8 @@ pub fn LabelViewer() -> impl IntoView {
 
 #[component]
 fn CategoryGroup(category: LabelCategory, labels: Vec<atproto_client::Label>) -> impl IntoView {
-    let expanded = create_rw_signal(true);
-    let labels = create_rw_signal(labels);
+    let expanded = RwSignal::new(true);
+    let labels = RwSignal::new(labels);
 
     view! {
         <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">

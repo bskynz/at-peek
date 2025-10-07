@@ -31,13 +31,13 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
-            subject_input: create_rw_signal(String::new()),
-            labels: create_rw_signal(None),
-            is_loading: create_rw_signal(false),
-            error: create_rw_signal(None),
-            auth_token: create_rw_signal(None),
-            authenticated_user_did: create_rw_signal(None),
-            is_authenticated: create_rw_signal(false),
+            subject_input: RwSignal::new(String::new()),
+            labels: RwSignal::new(None),
+            is_loading: RwSignal::new(false),
+            error: RwSignal::new(None),
+            auth_token: RwSignal::new(None),
+            authenticated_user_did: RwSignal::new(None),
+            is_authenticated: RwSignal::new(false),
         }
     }
 }

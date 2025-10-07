@@ -8,10 +8,10 @@ use crate::state::AppState;
 #[component]
 pub fn AuthPanel() -> impl IntoView {
     let state = expect_context::<AppState>();
-    let show_auth = create_rw_signal(false);
-    let handle = create_rw_signal(String::new());
-    let password = create_rw_signal(String::new());
-    let is_authenticating = create_rw_signal(false);
+    let show_auth = RwSignal::new(false);
+    let handle = RwSignal::new(String::new());
+    let password = RwSignal::new(String::new());
+    let is_authenticating = RwSignal::new(false);
 
     let on_login = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();

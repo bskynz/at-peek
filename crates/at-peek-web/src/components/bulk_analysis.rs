@@ -42,12 +42,12 @@ pub struct UserInfo {
 #[component]
 pub fn BulkAnalysis() -> impl IntoView {
     let state = expect_context::<AppState>();
-    let stats = create_rw_signal::<Option<BulkAnalysisStats>>(None);
-    let labeled_posts = create_rw_signal::<Vec<PostWithLabels>>(Vec::new());
-    let selected_post = create_rw_signal::<Option<PostWithLabels>>(None);
-    let is_analyzing = create_rw_signal(false);
-    let progress = create_rw_signal::<Option<String>>(None);
-    let progress_percent = create_rw_signal(0);
+    let stats = RwSignal::new(None::<BulkAnalysisStats>);
+    let labeled_posts = RwSignal::new(Vec::<PostWithLabels>::new());
+    let selected_post = RwSignal::new(None::<PostWithLabels>);
+    let is_analyzing = RwSignal::new(false);
+    let progress = RwSignal::new(None::<String>);
+    let progress_percent = RwSignal::new(0);
 
     let on_analyze = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -469,8 +469,8 @@ fn PostDetailModal<F>(post: PostWithLabels, on_close: F) -> impl IntoView
 where
     F: Fn() + 'static + Copy,
 {
-    let show_likers = create_rw_signal(false);
-    let show_reposters = create_rw_signal(false);
+    let show_likers = RwSignal::new(false);
+    let show_reposters = RwSignal::new(false);
 
     // Clone the post fields to avoid move issues
     let post_created_at = post.created_at.clone();

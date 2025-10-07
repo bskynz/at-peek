@@ -3,7 +3,7 @@
 
 #![forbid(unsafe_code)]
 
-use leptos::prelude::*;
+use leptos::mount;
 use wasm_bindgen::prelude::*;
 
 mod components;
@@ -22,5 +22,5 @@ pub fn main() {
 
     log::info!("at-peek web UI starting...");
 
-    leptos::mount::mount_to_body(App);
+    mount::mount_to_body(App);
 }
