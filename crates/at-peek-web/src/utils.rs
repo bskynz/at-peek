@@ -23,8 +23,8 @@ pub async fn fetch_labels(
     input: &str,
     auth_token: Option<String>,
 ) -> Result<LabelCollection, String> {
-    let bsky_labeler = if let Some(token) = auth_token {
-        LabelerClient::new_authenticated(token)
+    let bsky_labeler = if let Some(token) = &auth_token {
+        LabelerClient::new_authenticated(token.clone())
     } else {
         LabelerClient::new()
     };
@@ -70,7 +70,11 @@ pub async fn fetch_labels(
     // If we have a DID, also query the user's PDS for admin labels
     if let Some(did) = did_opt {
         if let Ok(pds_endpoint) = resolve_did(&did).await {
-            let pds_labeler = LabelerClient::with_url(pds_endpoint);
+            let pds_labeler = if let Some(token) = &auth_token {
+                LabelerClient::with_url(pds_endpoint).with_auth(token.clone())
+            } else {
+                LabelerClient::with_url(pds_endpoint)
+            };
             match pds_labeler.query_labels(&[subject]).await {
                 Ok(collection) => {
                     all_labels.extend(collection.labels);
@@ -397,7 +401,10 @@ where
         .await
         .map_err(|e| format!("Failed to fetch posts: {}", e))?;
 
-    progress_callback(format!("Fetched {} posts, querying labels...", posts.len()), 20);
+    progress_callback(
+        format!("Fetched {} posts, querying labels...", posts.len()),
+        20,
+    );
 
     if posts.is_empty() {
         return Ok((
@@ -464,11 +471,14 @@ where
     for (i, chunk) in uris.chunks(batch_size).enumerate() {
         // Progress from 30% to 85% across all batches
         let batch_progress = 30 + ((i as f32 / total_batches as f32) * 55.0) as u8;
-        progress_callback(format!(
-            "Querying mod.bsky.app: batch {}/{}...",
-            i + 1,
-            total_batches
-        ), batch_progress);
+        progress_callback(
+            format!(
+                "Querying mod.bsky.app: batch {}/{}...",
+                i + 1,
+                total_batches
+            ),
+            batch_progress,
+        );
 
         log::info!("Querying batch {} with {} URIs", i + 1, chunk.len());
 
@@ -540,7 +550,7 @@ where
             let process_progress = 90 + ((posts_processed as f32 / posts.len() as f32) * 9.0) as u8;
             progress_callback(
                 format!("Processing posts ({}/{})...", posts_processed, posts.len()),
-                process_progress
+                process_progress,
             );
         }
         let post_labels: Vec<_> = all_labels
