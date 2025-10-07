@@ -23,44 +23,12 @@
 
 ## Quick Start
 
-> **Note:** This project is currently in early development. While the Rust/web UI is under construction, you can use the CLI scripts to check labels right now.
+### Prerequisites
 
-### Using the CLI Scripts
-
-Two scripts are available for immediate use:
-
-**Bash Script** (requires `jq` and `curl`):
-```bash
-./check-labels.sh "https://bsky.app/profile/handle.bsky.social/post/POSTID"
-```
-
-**Python Script** (requires Python 3 and `requests`):
-```bash
-python check-labels.py "https://bsky.app/profile/handle.bsky.social/post/POSTID"
-```
-
-Both scripts support:
-- AT-URIs: `at://did:plc:abc123/app.bsky.feed.post/rkey`
-- Bluesky URLs: `https://bsky.app/profile/handle.bsky.social/post/rkey`
-- API URLs: `https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=...`
-
-**Authentication** (optional, for protected posts):
-```bash
-# Set environment variables
-export BLUESKY_HANDLE="your-handle.bsky.social"
-export BLUESKY_APP_PASSWORD="your-app-password"
-
-# Or let the script prompt you
-./check-labels.sh "post-url"
-```
-
-### Building the Web UI
-
-**Prerequisites:**
 - [Rust](https://rustup.rs/) (1.75+ recommended)
 - [Trunk](https://trunkrs.dev/) - WASM build tool
 
-**Installation:**
+### Installation
 
 ```bash
 # Install Rust (if not already installed)
@@ -83,7 +51,7 @@ trunk serve
 # Open http://localhost:8080 in your browser
 ```
 
-**Production build:**
+### Production Build
 
 ```bash
 cd crates/at-peek-web

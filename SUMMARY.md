@@ -17,9 +17,14 @@ A complete Rust web application for inspecting content moderation labels on ATpr
 
 ✅ **Web UI** (`at-peek-web`)
 - Leptos-based reactive UI compiled to WASM
-- Input panel for handles, DIDs, or AT-URIs
+- **Two operation modes:**
+  - **Single Check**: Query labels for individual handles, DIDs, or AT-URIs
+  - **Bulk Analysis**: Analyze last 1000 posts from a user with statistics
+- Authentication support for viewing restricted content and admin labels
 - Visual label badges with color-coding
 - Categorized label display with expand/collapse
+- Post details modal with media display (images/videos)
+- Like/repost counts and user lists
 - Empty state handling
 - Error handling with user-friendly messages
 - Dark mode ready (styling pending)
@@ -82,12 +87,14 @@ at-peek/
 │       ├── src/
 │       │   ├── lib.rs           # WASM entry
 │       │   ├── components/      # UI components
-│       │   │   ├── app.rs       # Root app
-│       │   │   ├── header.rs    # Header
-│       │   │   ├── input_panel.rs
-│       │   │   ├── label_viewer.rs
-│       │   │   ├── label_badge.rs
-│       │   │   └── empty_state.rs
+│       │   │   ├── app.rs       # Root app with tab navigation
+│       │   │   ├── header.rs    # Header with branding
+│       │   │   ├── auth_panel.rs # Authentication UI
+│       │   │   ├── input_panel.rs # Single check input
+│       │   │   ├── label_viewer.rs # Label display
+│       │   │   ├── label_badge.rs # Label badges
+│       │   │   ├── bulk_analysis.rs # Bulk analysis mode
+│       │   │   └── empty_state.rs # Empty states
 │       │   ├── state.rs         # App state
 │       │   └── utils.rs         # Helpers
 │       ├── index.html
@@ -135,15 +142,32 @@ at-peek/
 
 ## What Works Now
 
-✅ Handle resolution (alice.bsky.social → DID)  
-✅ DID input (did:plc:...)  
-✅ AT-URI input (at://...)  
-✅ Label querying from mod.bsky.app  
-✅ Label display with categories  
-✅ Color-coded badges  
-✅ Empty state handling  
-✅ Error messages  
-✅ Responsive layout (basic)  
+✅ **Single Check Mode**
+- Handle resolution (alice.bsky.social → DID)  
+- DID input (did:plc:...)  
+- AT-URI input (at://...)  
+- Label querying from mod.bsky.app and user PDS
+- Label display with categories  
+- Color-coded badges  
+
+✅ **Bulk Analysis Mode**
+- Analyze last 1000 posts from any user
+- Label statistics by category
+- Account-level moderation detection
+- Post details with media preview
+- Like/repost counts and user attribution
+- Timeline of when labels were applied
+
+✅ **Authentication**
+- Bluesky login with app passwords
+- Access to restricted content and admin labels (!ban, !takedown, etc.)
+- Session-only token storage (browser memory)
+
+✅ **UI/UX**
+- Empty state handling  
+- Error messages with helpful guidance
+- Responsive layout (basic)
+- Loading states and progress indicators  
 
 ## What's Next (MVP Phase 1 Completion)
 
@@ -166,10 +190,10 @@ at-peek/
 - [ ] Bundle size reduction
 
 ### Future
-- [ ] Authentication for private posts
 - [ ] Custom labeler configuration
 - [ ] Label comparison (multiple users/posts)
-- [ ] Analytics (local-only, privacy-preserving)
+- [ ] Analytics dashboard (local-only, privacy-preserving)
+- [ ] Export bulk analysis results to JSON/CSV
 
 ## How to Get Started
 
@@ -192,10 +216,16 @@ trunk serve
 ### Testing
 
 ```bash
-# Try these examples:
+# Try these examples in Single Check mode:
 1. Enter: alice.bsky.social (or any handle)
 2. Enter: did:plc:z72i7hdynmk6r22z27h6tvur (Bluesky official account)
 3. Enter: at://did:plc:example/app.bsky.feed.post/abc123 (any post AT-URI)
+
+# Try these in Bulk Analysis mode:
+1. Enter a handle to analyze their last 1000 posts
+2. View label statistics and categorization
+3. Click on labeled posts to see details
+4. Check account-level moderation labels
 ```
 
 ## Documentation
@@ -217,19 +247,21 @@ Current targets:
 
 ✅ No unsafe Rust code (`#![forbid(unsafe_code)]`)  
 ✅ HTTPS-only connections  
-✅ No credentials stored (MVP is public labels only)  
+✅ Authentication tokens stored in browser memory only (not localStorage/cookies)  
+✅ App passwords recommended (not main account password)  
+✅ No credential persistence between sessions  
 ✅ No third-party tracking  
 ✅ No cookies  
 ✅ Local-only processing  
 
 ## Known Limitations
 
-- MVP only supports Bluesky's official labeler (mod.bsky.app)
-- No authentication (public labels only)
-- No label history/timeline
-- No self-labels support
+- Only supports Bluesky's official labeler (mod.bsky.app) and user PDS servers
+- No label history/timeline for single check mode (available in bulk analysis)
+- No self-labels support yet
 - Basic styling (TailwindCSS via CDN)
 - No offline support
+- Authentication token stored in browser memory only (cleared on page refresh)
 
 ## License
 

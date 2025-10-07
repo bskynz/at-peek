@@ -3,8 +3,24 @@ name: CI
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'crates/**/*.rs'
+      - 'crates/**/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/at-peek-web/index.html'
+      - 'crates/at-peek-web/Trunk.toml'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'crates/**/*.rs'
+      - 'crates/**/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/at-peek-web/index.html'
+      - 'crates/at-peek-web/Trunk.toml'
+      - '.github/workflows/ci.yml'
 
 env:
   CARGO_TERM_COLOR: always
